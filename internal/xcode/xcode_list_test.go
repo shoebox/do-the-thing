@@ -11,7 +11,7 @@ import (
 
 var mockExec *utiltest.MockExec
 var mockFileService *utiltest.MockFileService
-var service ListService
+var service XCodeListService
 
 const XCODES = `/Applications/Xcode.app
 /Applications/Xcode 10.3.1.app
@@ -20,7 +20,7 @@ const XCODES = `/Applications/Xcode.app
 func setup() {
 	mockExec = new(utiltest.MockExec)
 	mockFileService = new(utiltest.MockFileService)
-	service = ListService{exec: mockExec, file: mockFileService}
+	service = XCodeListService{exec: mockExec, file: mockFileService}
 }
 
 func xcodePlist(version string) string {
