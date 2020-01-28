@@ -3,6 +3,7 @@ package xcode
 import (
 	"dothething/internal/util"
 	"errors"
+	"sort"
 
 	"github.com/blang/semver"
 	logr "github.com/sirupsen/logrus"
@@ -74,13 +75,13 @@ func (s *XCodeSelectService) isEqualMatch(install *Install, version string) (boo
 
 func (s *XCodeSelectService) findMatch(requirement string,
 	valid func(install *Install, version string) (bool, error)) (*Install, error) {
-	installs, err := s.list.List()
+	list, err := s.list.List()
 	if err != nil {
 		return nil, err
 	}
 
-	var target *Install
-	for _, install := range installs {
+	var installs = []*Install{}
+	for _, install := range list {
 		res, err := valid(install, requirement)
 		if err != nil {
 			logr.Error(err)
@@ -88,10 +89,34 @@ func (s *XCodeSelectService) findMatch(requirement string,
 		}
 
 		if res {
-			target = install
-			break
+			installs = append(installs, install)
 		}
 	}
 
-	return target, nil
+	sortInstalls(installs)
+
+	if len(installs) == 0 {
+		return nil, ErrMatchNotFound
+	}
+
+	return installs[0], nil
+}
+
+func sortInstalls(installs []*Install) {
+	sort.Slice(installs, func(i, j int) bool {
+		version1 := installs[i]
+		version2 := installs[j]
+
+		v1, err := semver.Parse(version1.Version)
+		if err != nil {
+			return false
+		}
+
+		v2, err := semver.Parse(version2.Version)
+		if err != nil {
+			return true
+		}
+
+		return v1.GT(v2)
+	})
 }

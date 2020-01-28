@@ -134,3 +134,35 @@ func TestFindMatch(t *testing.T) {
 		assert.EqualError(t, err, "Listing error")
 	})
 }
+
+func TestSortInstalls(t *testing.T) {
+
+	t.Run("Simple sorting", func(t *testing.T) {
+		install1 := Install{Version: "10.1.2"}
+		install2 := Install{Version: "10.0.1"}
+		install3 := Install{Version: "10.1.1"}
+
+		c := append([]*Install{}, &install1, &install2, &install3)
+
+		sortInstalls(c)
+
+		assert.Equal(t, c[0], &install1)
+		assert.Equal(t, c[1], &install3)
+		assert.Equal(t, c[2], &install2)
+	})
+
+	t.Run("Error parsing should be handle and result sorted down", func(t *testing.T) {
+		install1 := Install{Version: "10.1.2"}
+		install2 := Install{Version: "10.0.1"}
+		install3 := Install{Version: "10.1.1"}
+		empty := Install{}
+
+		c := append([]*Install{}, &install1, &install2, &install3, &empty, &empty)
+		sortInstalls(c)
+
+		assert.Equal(t, c[0], &install1)
+		assert.Equal(t, c[1], &install3)
+		assert.Equal(t, c[2], &install2)
+		assert.Equal(t, c[3], &empty)
+	})
+}
