@@ -52,7 +52,7 @@ func (s *XCodeSelectService) SelectVersion(requirement string) (*Install, error)
 
 	target, err := s.findMatch(requirement, s.isEqualMatch)
 
-	if target == nil {
+	if target == nil || err != nil {
 		return nil, ErrMatchNotFound
 	}
 
