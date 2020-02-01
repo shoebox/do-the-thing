@@ -7,16 +7,6 @@ import (
 )
 
 func main() {
-	fmt.Println("main")
-
-	/*
-		res, err := service.List()
-		fmt.Println(res, err)
-		for _, r := range res {
-			fmt.Println(r)
-		}
-	*/
-
 	exec := util.OsExec{}
 	fileUtilService := util.IoUtilFileService{}
 
@@ -30,6 +20,6 @@ func main() {
 
 	selectService := xcode.NewSelectService(listService, exec)
 
-	res, err := selectService.SelectVersion("10.2.1")
+	res, err := selectService.Find("10.2.1")
 	fmt.Println(res, err)
 }

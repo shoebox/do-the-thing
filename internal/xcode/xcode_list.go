@@ -11,11 +11,17 @@ import (
 )
 
 const (
-	MDFIND                  = "mdfind"
-	XCODE_BUNDLE_IDENTIFIER = "kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'"
-	PLIST                   = "/Contents/Info.plist"
+	// MdFind spotlight search executable
+	MdFind = "mdfind"
+
+	// XCodeBundleIdentifier What spotlight should look for to identify Xcode installs
+	XCodeBundleIdentifier = "kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'"
+
+	// ContentPListFile path to the Info plist file in to the Xcode app bundle
+	ContentPListFile = "/Contents/Info.plist"
 )
 
+// ListService basic interface
 type ListService interface {
 	List() ([]*Install, error)
 }
@@ -27,7 +33,7 @@ type Install struct {
 	Version       string
 }
 
-// ListService Service to retrieve the list of xcode installation on the sytem
+// XCodeListService Service to retrieve the list of xcode installation on the sytem
 type XCodeListService struct {
 	exec util.Exec
 	file util.FileService
@@ -50,7 +56,7 @@ func (s XCodeListService) List() ([]*Install, error) {
 }
 
 func (s XCodeListService) spotlightSearch() ([]byte, error) {
-	return s.exec.Exec(MDFIND, XCODE_BUNDLE_IDENTIFIER)
+	return s.exec.Exec(MdFind, XCodeBundleIdentifier)
 }
 
 func (s XCodeListService) parseSpotlightSearchResult(reader io.Reader) ([]*Install, error) {
@@ -82,7 +88,7 @@ func (s XCodeListService) validate(path string) (bool, error) {
 }
 
 func (s XCodeListService) resolveXcode(path string) (*Install, error) {
-	abs, err := filepath.Abs(path + PLIST)
+	abs, err := filepath.Abs(path + ContentPListFile)
 	if err != nil {
 		return nil, err
 	}

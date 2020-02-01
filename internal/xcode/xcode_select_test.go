@@ -59,7 +59,7 @@ func mockResults() {
 
 func TestVersionSelection(t *testing.T) {
 	t.Run("Should handle invalid requirement", func(t *testing.T) {
-		install, err := subject.SelectVersion("Invalid")
+		install, err := subject.Find("Invalid")
 		assert.Nil(t, install)
 		assert.EqualError(t, err, ErrInvalidVersion.Error())
 	})
@@ -69,7 +69,7 @@ func TestVersionSelection(t *testing.T) {
 		mockListService.On("List").
 			Return(nil, fmt.Errorf("Listing error"))
 
-		install, err := subject.SelectVersion("1.2.3")
+		install, err := subject.Find("1.2.3")
 		assert.Nil(t, install)
 		assert.Error(t, err, "Listing error")
 	})
@@ -77,7 +77,7 @@ func TestVersionSelection(t *testing.T) {
 	t.Run("Should properly select the version if available", func(t *testing.T) {
 		setupSelectTest()
 		mockResults()
-		installl, err := subject.SelectVersion("10.3.1")
+		installl, err := subject.Find("10.3.1")
 		assert.NoError(t, err)
 		assert.NotNil(t, installl)
 	})
@@ -85,7 +85,7 @@ func TestVersionSelection(t *testing.T) {
 	t.Run("When could not find an instance should throw an error", func(t *testing.T) {
 		setupSelectTest()
 		mockResults()
-		installl, err := subject.SelectVersion("10.3.3")
+		installl, err := subject.Find("10.3.3")
 		assert.EqualValues(t, ErrMatchNotFound, err)
 		assert.Nil(t, installl)
 	})
@@ -93,7 +93,7 @@ func TestVersionSelection(t *testing.T) {
 	t.Run("Target resolution", func(t *testing.T) {
 		setupSelectTest()
 		mockResults()
-		installl, err := subject.SelectVersion("10.3.1")
+		installl, err := subject.Find("10.3.1")
 		fmt.Println("install", installl)
 		assert.Nil(t, err)
 		assert.NotNil(t, installl)

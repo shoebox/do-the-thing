@@ -23,9 +23,9 @@ func setup() {
 	service = XCodeListService{exec: mockExec, file: mockFileService}
 }
 
-func xcodePlist(version string) string {
+func xcodeContentPListFile(version string) string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+	<!DOCTYPE plist PUBLIC "-//Apple//DTD ContentPListFile 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 	<plist version="1.0">
 		<dict>
 			<key>CFBundleVersion</key>
@@ -41,7 +41,7 @@ func TestOpenFileContent(t *testing.T) {
 
 	// Expectation
 	mockExec.
-		On("Exec", MDFIND, []string{XCODE_BUNDLE_IDENTIFIER}).
+		On("Exec", MdFind, []string{XCodeBundleIdentifier}).
 		Return("Hello world", nil)
 
 	wb, _ := service.spotlightSearch()
@@ -61,8 +61,8 @@ func TestResolveXcode(t *testing.T) {
 		setup()
 
 		mockFileService.
-			On("OpenAndReadFileContent", fmt.Sprintf("%v%v", install.Path, PLIST)).
-			Return(xcodePlist("1.2.3"), nil)
+			On("OpenAndReadFileContent", fmt.Sprintf("%v%v", install.Path, ContentPListFile)).
+			Return(xcodeContentPListFile("1.2.3"), nil)
 
 		xc, err := service.resolveXcode(fmt.Sprintf(install.Path))
 
@@ -75,7 +75,7 @@ func TestResolveXcode(t *testing.T) {
 		setup()
 
 		mockFileService.
-			On("OpenAndReadFileContent", fmt.Sprintf("%v%v", install.Path, PLIST)).
+			On("OpenAndReadFileContent", fmt.Sprintf("%v%v", install.Path, ContentPListFile)).
 			Return(nil, fmt.Errorf("Error sample"))
 
 		xc, err := service.resolveXcode(fmt.Sprintf(install.Path))
@@ -88,7 +88,7 @@ func TestResolveXcode(t *testing.T) {
 		setup()
 
 		mockFileService.
-			On("OpenAndReadFileContent", fmt.Sprintf("%v%v", install.Path, PLIST)).
+			On("OpenAndReadFileContent", fmt.Sprintf("%v%v", install.Path, ContentPListFile)).
 			Return("invalid", nil)
 
 		xc, err := service.resolveXcode(fmt.Sprintf(install.Path))
@@ -101,7 +101,7 @@ func TestSpotLightFailure(t *testing.T) {
 	setup()
 
 	mockExec.
-		On("Exec", MDFIND, []string{XCODE_BUNDLE_IDENTIFIER}).
+		On("Exec", MdFind, []string{XCodeBundleIdentifier}).
 		Return(nil, fmt.Errorf("Error"))
 
 	res, err := service.List()
@@ -114,7 +114,7 @@ func TestList(t *testing.T) {
 	setup()
 
 	mockExec.
-		On("Exec", MDFIND, []string{XCODE_BUNDLE_IDENTIFIER}).
+		On("Exec", MdFind, []string{XCodeBundleIdentifier}).
 		Return(XCODES, nil)
 
 	mockFileService.On("IsDir", "/Applications/Xcode.app").Return(true, nil)
@@ -122,16 +122,16 @@ func TestList(t *testing.T) {
 	mockFileService.On("IsDir", "/Invalid/path").Return(false, nil)
 
 	mockFileService.
-		On("OpenAndReadFileContent", "/Applications/Xcode.app"+PLIST).
-		Return(xcodePlist("1.2.3"), nil)
+		On("OpenAndReadFileContent", "/Applications/Xcode.app"+ContentPListFile).
+		Return(xcodeContentPListFile("1.2.3"), nil)
 
 	mockFileService.
-		On("OpenAndReadFileContent", "/invalid/path"+PLIST).
-		Return(xcodePlist("1.2.3"), nil)
+		On("OpenAndReadFileContent", "/invalid/path"+ContentPListFile).
+		Return(xcodeContentPListFile("1.2.3"), nil)
 
 	mockFileService.
-		On("OpenAndReadFileContent", "/Applications/Xcode 10.3.1.app"+PLIST).
-		Return(xcodePlist("10.3.1"), nil)
+		On("OpenAndReadFileContent", "/Applications/Xcode 10.3.1.app"+ContentPListFile).
+		Return(xcodeContentPListFile("10.3.1"), nil)
 
 	res, err := service.List()
 	assert.NoError(t, err)

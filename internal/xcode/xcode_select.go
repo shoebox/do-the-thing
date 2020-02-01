@@ -10,24 +10,31 @@ import (
 )
 
 var (
-	ErrMatchNotFound  = errors.New("XCode match not found")
+	// ErrMatchNotFound No match found on the system
+	ErrMatchNotFound = errors.New("XCode match not found")
+
+	// ErrInvalidVersion the required vesion format is invalid
 	ErrInvalidVersion = errors.New("Invalid version")
 )
 
+// SelectService The XCode version selection service interface
 type SelectService interface {
 	SelectService(version string) error
 }
 
+// XCodeSelectService The XCode version selection service struct
 type XCodeSelectService struct {
 	exec util.Exec
 	list ListService
 }
 
+// NewSelectService create a new instance of the xcode selector service
 func NewSelectService(list ListService, exec util.Exec) *XCodeSelectService {
 	return &XCodeSelectService{exec: exec, list: list}
 }
 
-func (s *XCodeSelectService) SelectVersion(requirement string) (*Install, error) {
+// Find allow to resolve a XCode install by required vesion
+func (s *XCodeSelectService) Find(requirement string) (*Install, error) {
 	// Should try to parse the required version
 	required, err := semver.Parse(requirement)
 	if err != nil {
