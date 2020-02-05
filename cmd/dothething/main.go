@@ -22,8 +22,4 @@ func main() {
 
 	res, err := selectService.Find("10.2.1")
 	fmt.Println(res, err)
-
-	res2 := xcode.NewProjectService(exec)
-	err = res2.Parse()
-	fmt.Println("err", err, res2)
 }
