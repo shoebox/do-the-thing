@@ -47,9 +47,9 @@ func NewProjectService(exec util.Exec) *XCodeProjectService {
 }
 
 // Parse the project
-func (s *XCodeProjectService) Parse() (*Project, error) {
+func (s *XCodeProjectService) Parse(projectPath *string) (*Project, error) {
 	// Execute the list call to xcodebuild
-	data, err := s.xCodeCall()
+	data, err := s.xCodeCall(projectPath)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to call xcode API (Error : %s)", err)
 	}
@@ -64,6 +64,6 @@ func (s *XCodeProjectService) Parse() (*Project, error) {
 	return &root.Project, nil
 }
 
-func (s *XCodeProjectService) xCodeCall() ([]byte, error) {
-	return s.exec.Exec(xCodeBuild, flagList, flagJSON)
+func (s *XCodeProjectService) xCodeCall(path *string) ([]byte, error) {
+	return s.exec.Exec(path, xCodeBuild, flagList, flagJSON)
 }

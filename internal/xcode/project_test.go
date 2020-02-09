@@ -45,18 +45,42 @@ func setupServiceTest() {
 }
 
 func TestProjectResolution(t *testing.T) {
-	t.Run("Should handle possible errors while invoking xcodebuild", func(t *testing.T) {
+	params := []struct {
+		execErr       error
+		expectedError error
+		json          string
+		path          string
+	}{
+		{
+			execErr:       nil,
+			json:          "invalid json",
+			expectedError: ErrInvalidConfig,
+		},
+		{
+			execErr:       errors.New("Error calling xcode"),
+			json:          "invalid json",
+			expectedError: errors.New("Failed to call xcode API (Error : Error calling xcode)"),
+		},
+		{
+			execErr:       errors.New("Error calling xcode"),
+			expectedError: errors.New("Failed to call xcode API (Error : Error calling xcode)"),
+			json:          "invalid json",
+			path:          "/r/t",
+		},
+	}
+
+	for _, tc := range params {
 		setupServiceTest()
 
 		execMock.
 			On("Exec", xCodeBuild, []string{flagList, flagJSON}).
-			Return(nil, errors.New("Error calling xcode"))
+			Return(tc.json, tc.execErr)
 
-		pj, err := projectSevice.Parse()
-		assert.Nil(t, pj)
-		assert.EqualError(t, err, "Failed to call xcode API (Error : Error calling xcode)")
+		_, err := projectSevice.Parse(&tc.path)
 
-	})
+		assert.EqualValues(t, tc.expectedError, err)
+		execMock.AssertExpectations(t)
+	}
 
 	t.Run("Should properly call xcodedbuild and parse the result", func(t *testing.T) {
 		setupServiceTest()
@@ -65,7 +89,7 @@ func TestProjectResolution(t *testing.T) {
 			On("Exec", xCodeBuild, []string{flagList, flagJSON}).
 			Return(validResponse, nil)
 
-		pj, err := projectSevice.Parse()
+		pj, err := projectSevice.Parse(nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, pj)
 
@@ -97,15 +121,4 @@ func TestProjectResolution(t *testing.T) {
 			"TopShelfExtension"}, pj.Schemes)
 	})
 
-	t.Run("Should handling unmarshalling errors", func(t *testing.T) {
-		setupServiceTest()
-
-		execMock.
-			On("Exec", xCodeBuild, []string{flagList, flagJSON}).
-			Return("invalid json", nil)
-
-		pj, err := projectSevice.Parse()
-		assert.EqualError(t, err, ErrInvalidConfig.Error())
-		assert.Nil(t, pj)
-	})
 }

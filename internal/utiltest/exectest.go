@@ -10,7 +10,7 @@ type MockExec struct {
 
 var MockExecutor *MockExec
 
-func (m *MockExec) Exec(name string, extra ...string) ([]byte, error) {
+func (m *MockExec) Exec(path *string, name string, extra ...string) ([]byte, error) {
 	args := m.Called(name, extra)
 
 	if args.Error(1) != nil {

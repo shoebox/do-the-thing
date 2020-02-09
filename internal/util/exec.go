@@ -1,13 +1,19 @@
 package util
 
-import "os/exec"
+import (
+	"os/exec"
+)
 
 type Exec interface {
-	Exec(name string, args ...string) ([]byte, error)
+	Exec(dir *string, name string, args ...string) ([]byte, error)
 }
 
 type OsExec struct{}
 
-func (e OsExec) Exec(name string, args ...string) ([]byte, error) {
-	return exec.Command(name, args...).Output()
+func (e OsExec) Exec(workingDir *string, cmdName string, cmdArgs ...string) ([]byte, error) {
+	exec := exec.Command(cmdName, cmdArgs...)
+	if workingDir != nil {
+		exec.Dir = *workingDir
+	}
+	return exec.Output()
 }
