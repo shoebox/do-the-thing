@@ -56,7 +56,7 @@ func (s XCodeListService) List() ([]*Install, error) {
 }
 
 func (s XCodeListService) spotlightSearch() ([]byte, error) {
-	return s.exec.Exec(MdFind, XCodeBundleIdentifier)
+	return s.exec.Exec(nil, MdFind, XCodeBundleIdentifier)
 }
 
 func (s XCodeListService) parseSpotlightSearchResult(reader io.Reader) ([]*Install, error) {
