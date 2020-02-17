@@ -9,6 +9,15 @@ type MockExec struct {
 }
 
 var MockExecutor *MockExec
+var Exec *MockExec
+
+func SetupMockExec() {
+	Exec = new(MockExec)
+}
+
+func TearDownMockExec() {
+	Exec = nil
+}
 
 func (m *MockExec) Exec(path *string, name string, extra ...string) ([]byte, error) {
 	args := m.Called(name, extra)
