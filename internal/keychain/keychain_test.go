@@ -30,10 +30,15 @@ func TestMain(t *testing.T) {
 
 func TestCreateKeyChain(t *testing.T) {
 	t.Run("Password should not be empty", func(t *testing.T) {
+		// setup:
+		TestMain(t)
+
 		// when:
-		err := subject.createKeychain("")
+		fmt.Println("Empty")
+		f, err := subject.createKeychain("")
 
 		// then:
+		assert.Nil(t, f)
 		assert.EqualError(t, err, "Keychain password should not be empty")
 
 		// and:
@@ -41,16 +46,21 @@ func TestCreateKeyChain(t *testing.T) {
 	})
 
 	t.Run("Should create keychain", func(t *testing.T) {
+		// setup:
+		passwd := "p4ssword"
+		TestMain(t)
+
 		// Should create the keychain
 		mockExec.
-			On(SecurityUtil, ActionCreateKeychain, "-p", "p4ssword", mock.Anything).
-			Return()
+			On("Exec", SecurityUtil, []string{ActionCreateKeychain, "-p", passwd, "do-the-thing"}).
+			Return("", nil)
 
 		// when:
-		err := subject.createKeychain("p4ssword")
+		f, err := subject.createKeychain(passwd)
 
 		// then:
 		assert.NoError(t, err)
+		assert.NotNil(t, f)
 
 		// and:
 		mockExec.AssertExpectations(t)
@@ -64,7 +74,7 @@ func TestKeyChainConfiguration(t *testing.T) {
 		Return()
 
 	mockExec.
-		On(SecurityUtil,
+		On("Exec", SecurityUtil,
 			ActionSetPartitionList,
 			"-S",
 			"apple-tool:,apple:",
@@ -86,7 +96,7 @@ func TestKeyChainConfiguration(t *testing.T) {
 func TestKeyChainDelete(t *testing.T) {
 	//
 	mockExec.
-		On(SecurityUtil, ActionDeleteKeychain, mock.Anything).
+		On("Exec", SecurityUtil, ActionDeleteKeychain, mock.Anything).
 		Return()
 
 	// when:

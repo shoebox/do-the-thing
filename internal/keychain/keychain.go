@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"dothething/internal/util"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -37,12 +39,7 @@ func NewKeyChain(exec util.Exec) (KeyChain, error) {
 }
 
 func (k KeyChainHandler) Create(password string) (*os.File, error) {
-	file, err := ioutil.TempFile("", "do-the-thing.*.keychain")
-	if err != nil {
-		return nil, err
-	}
-
-	return file, err
+	return nil, nil
 
 	// k.exec.Exec()
 }
@@ -51,8 +48,26 @@ func (k KeyChainHandler) ImportCertificate(file io.Reader, password string) erro
 	return nil
 }
 
-func (k KeyChainHandler) createKeychain(password string) error {
-	return nil
+func (k KeyChainHandler) createKeychain(password string) (*os.File, error) {
+	fmt.Println("password :", len(password))
+	if len(password) == 0 {
+		return nil, errors.New("Keychain password should not be empty")
+	}
+
+	file, err := ioutil.TempFile("", "do-the-thing.*.keychain")
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = k.exec.Exec(nil, SecurityUtil,
+		ActionCreateKeychain,
+		"-p", password,
+		"do-the-thing")
+	if err != nil {
+		return nil, err
+	}
+
+	return file, nil
 }
 
 func (k KeyChainHandler) configureKeychain() error {
@@ -94,7 +109,7 @@ func (k KeyChainHandler) getSearchList() ([]string, error) {
 	return res, nil
 }
 
-func (k KeyChainHandler) setSearchList([]*os.File) error {
+func (k KeyChainHandler) setSearchList([]string) error {
 	return nil
 }
 
