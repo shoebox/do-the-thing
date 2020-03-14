@@ -14,10 +14,11 @@ func main() {
 	k := keychain.NewKeyChain(exec)
 	fmt.Println(k)
 
-	f, err := k.Create("password")
-	fmt.Println(f, err)
+	err := k.Create("password")
+	fmt.Println(err)
 
-	f, err = os.Open("assets/Certificate.p12")
+	f, err := os.Open("assets/Certificate.p12")
+	fmt.Println(f, err)
 
 	err = k.ImportCertificate("assets/Certificate.p12", "p4ssword", "123")
 	fmt.Println(err)
