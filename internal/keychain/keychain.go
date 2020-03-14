@@ -5,10 +5,8 @@ import (
 	"bytes"
 	"dothething/internal/util"
 	"errors"
-	"fmt"
-	"io"
 	"io/ioutil"
-	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -17,35 +15,77 @@ const (
 
 	ActionCreateKeychain   = "create-keychain"
 	ActionDeleteKeychain   = "delete-keychain"
+	ActionImport           = "import"
 	ActionSettings         = "set-keychain-settings"
 	ActionSetPartitionList = "set-key-partition-list"
 	ActionListKeyChains    = "list-keychains"
 )
 
 type KeyChain interface {
-	Create(password string) (*os.File, error)
+	Create(password string) error
+	Delete() error
+	ImportCertificate(filePath string, password string, identity string) error
 }
 
 type KeyChainHandler struct {
-	exec         util.Exec
-	keychainFile *os.File
+	exec     util.Exec
+	filePath string
 }
 
-func NewKeyChain(exec util.Exec) (KeyChain, error) {
-	tmpFile, err := ioutil.TempFile("", "test.*.keychain")
+func NewKeyChain(exec util.Exec) KeyChain {
+	return KeyChainHandler{exec: exec}
+}
+
+// Create will create a new temporary keychhain and add it to the
+// search list
+func (k KeyChainHandler) Create(password string) error {
+	tmpDir, err := ioutil.TempDir("", "do-the-thing-*")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return KeyChainHandler{exec: exec, keychainFile: tmpFile}, nil
+
+	k.filePath = filepath.Join(tmpDir, "do-the-thing.keychain")
+
+	err = k.createKeychain(password)
+	if err != nil {
+		return err
+	}
+
+	err = k.configureKeychain()
+	if err != nil {
+		return err
+	}
+
+	err = k.addKeyChainToSearchList()
+	if err != nil {
+		return err
+	}
+
+	return err
 }
 
-func (k KeyChainHandler) Create(password string) (*os.File, error) {
-	return nil, nil
-
-	// k.exec.Exec()
+// Delete will delete the keychain and remove them from the search list
+func (k KeyChainHandler) Delete() error {
+	if _, err := k.exec.Exec(nil,
+		SecurityUtil, ActionDeleteKeychain,
+		k.filePath); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (k KeyChainHandler) ImportCertificate(file io.Reader, password string) error {
+// ImportCertificate Import one item into a keychain
+func (k KeyChainHandler) ImportCertificate(filePath string, password string, identity string) error {
+	if _, err := k.exec.Exec(nil, SecurityUtil,
+		ActionImport,
+		filePath,
+		"-k", k.filePath, // Specify keychain into which item(s) will be imported.
+		"-P", password, // Specify the unwrapping passphrase immediately.
+		"-T", "/usr/bin/codesign"); // Specify an application which may access the imported key;
+	err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -55,11 +95,9 @@ func (k KeyChainHandler) createKeychain(password string) error {
 		return errors.New("Keychain password should not be empty")
 	}
 
-	res, err := k.exec.Exec(nil, SecurityUtil, ActionCreateKeychain,
+	_, err := k.exec.Exec(nil, SecurityUtil, ActionCreateKeychain,
 		"-p", password, // Use password as the password for the keychains being created.
-		k.keychainFile.Name())
-
-	fmt.Println(res, err)
+		k.filePath)
 
 	if err != nil {
 		return err
@@ -71,7 +109,7 @@ func (k KeyChainHandler) createKeychain(password string) error {
 // configureKeychain : Set settings for keychain, or the default keychain if none is specified
 func (k KeyChainHandler) configureKeychain() error {
 	// Omitting the timeout argument (-t) specified no-timeout
-	if _, err := k.exec.Exec(nil, SecurityUtil, ActionSettings, k.keychainFile.Name()); err != nil {
+	if _, err := k.exec.Exec(nil, SecurityUtil, ActionSettings, k.filePath); err != nil {
 		return err
 	}
 
@@ -88,20 +126,10 @@ func (k KeyChainHandler) setPartitionList(password string, description string) e
 		"-k", password, // Password for keychain
 		"-D", description, // Match description string
 		"-t", "private", // We are looking for a private key
-		k.keychainFile.Name()); err != nil {
+		k.filePath); err != nil {
 		return err
 	}
 
-	return nil
-}
-
-// deleteKeyChain: Delete keychains and remove them from the search list
-func (k KeyChainHandler) deleteKeyChain() error {
-	if _, err := k.exec.Exec(nil,
-		SecurityUtil, ActionDeleteKeychain,
-		k.keychainFile.Name()); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -111,11 +139,7 @@ func (k KeyChainHandler) addKeyChainToSearchList() error {
 		return err
 	}
 
-	return k.setSearchList(append(list, k.keychainFile.Name()))
-}
-
-func (k KeyChainHandler) removeKeyChainToSearchList() error {
-	return nil
+	return k.setSearchList(append(list, k.filePath))
 }
 
 func (k KeyChainHandler) getSearchList() ([]string, error) {

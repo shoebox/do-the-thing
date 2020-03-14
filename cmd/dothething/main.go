@@ -1,17 +1,29 @@
 package main
 
-/*
 import (
 	"dothething/internal/keychain"
 	"dothething/internal/util"
+	"fmt"
+	"os"
 )
-*/
 
 func main() {
-	// exec := util.OsExec{}
+	exec := util.OsExec{}
 	// fileUtilService := util.IoUtilFileService{}
 
-	// k, err := keychain.NewKeyChain(exec)
+	k := keychain.NewKeyChain(exec)
+	fmt.Println(k)
+
+	f, err := k.Create("password")
+	fmt.Println(f, err)
+
+	f, err = os.Open("assets/Certificate.p12")
+
+	err = k.ImportCertificate("assets/Certificate.p12", "p4ssword", "123")
+	fmt.Println(err)
+
+	// defer k.Delete()
+
 	// f, err := k.Create()
 	// fmt.Println(f.Name(), err)
 

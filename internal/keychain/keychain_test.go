@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 var mockExec *utiltest.MockExec
@@ -23,9 +24,54 @@ func TestKeychainMain(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, tmpFile)
 
-	subject = KeyChainHandler{exec: mockExec, keychainFile: tmpFile}
+	subject = KeyChainHandler{exec: mockExec, filePath: tmpFile.Name()}
 	t.Cleanup(func() {
 		fmt.Println("clean")
+	})
+}
+
+func TestCreate(t *testing.T) {
+	// setup:
+	t.Run("Should handle error", func(t *testing.T) {
+		// setup:
+		TestKeychainMain(t)
+
+		mockExec.
+			On("Exec", SecurityUtil, mock.Anything).
+			Return("", errors.New("mock error"))
+
+		// when:
+		err := subject.Create("p4ssword")
+
+		// then:
+		assert.EqualError(t, err, "mock error")
+	})
+}
+
+func TestImportCertificate(t *testing.T) {
+	t.Run("Should invoke exec API", func(t *testing.T) {
+		// setup:
+		passwd := "p4ssword"
+		filepath := "toto"
+		TestKeychainMain(t)
+
+		// Should create the keychain
+		mockExec.
+			On("Exec", SecurityUtil, []string{ActionImport,
+				filepath,
+				"-k", tmpFile.Name(),
+				"-P", passwd,
+				"-T", "/usr/bin/codesign"}).
+			Return("", nil)
+
+		// when:
+		err := subject.ImportCertificate(filepath, passwd, "")
+
+		// then:
+		assert.NoError(t, err)
+
+		// and:
+		mockExec.AssertExpectations(t)
 	})
 }
 
@@ -54,7 +100,7 @@ func TestCreateKeyChain(t *testing.T) {
 		mockExec.
 			On("Exec", SecurityUtil, []string{ActionCreateKeychain,
 				"-p", passwd,
-				subject.keychainFile.Name()}).
+				subject.filePath}).
 			Return("", nil)
 
 		// when:
@@ -65,6 +111,24 @@ func TestCreateKeyChain(t *testing.T) {
 
 		// and:
 		mockExec.AssertExpectations(t)
+	})
+
+	t.Run("Should handle error", func(t *testing.T) {
+		// setup:
+		passwd := "p4ssword"
+		TestKeychainMain(t)
+
+		mockExec.
+			On("Exec", SecurityUtil, []string{ActionCreateKeychain,
+				"-p", passwd,
+				subject.filePath}).
+			Return("", errors.New("mock error"))
+
+		// when:
+		err := subject.createKeychain(passwd)
+
+		// then:
+		assert.EqualError(t, err, "mock error")
 	})
 }
 
@@ -143,20 +207,39 @@ func TestSetPartitionList(t *testing.T) {
 }
 
 func TestKeyChainDelete(t *testing.T) {
-	// setup:
-	TestKeychainMain(t)
-	mockExec.
-		On("Exec", SecurityUtil, []string{ActionDeleteKeychain, tmpFile.Name()}).
-		Return("", nil)
+	t.Run("Success case", func(t *testing.T) {
+		// setup:
+		TestKeychainMain(t)
+		mockExec.
+			On("Exec", SecurityUtil, []string{ActionDeleteKeychain, tmpFile.Name()}).
+			Return("", nil)
 
-	// when:
-	err := subject.deleteKeyChain()
+		// when:
+		err := subject.Delete()
 
-	// then:
-	assert.NoError(t, err)
+		// then:
+		assert.NoError(t, err)
 
-	// and:
-	mockExec.AssertExpectations(t)
+		// and:
+		mockExec.AssertExpectations(t)
+	})
+
+	t.Run("Error case", func(t *testing.T) {
+		// setup:
+		TestKeychainMain(t)
+		mockExec.
+			On("Exec", SecurityUtil, []string{ActionDeleteKeychain, tmpFile.Name()}).
+			Return("", errors.New("Error text"))
+
+		// when:
+		err := subject.Delete()
+
+		// then:
+		assert.EqualError(t, err, "Error text")
+
+		// and:
+		mockExec.AssertExpectations(t)
+	})
 }
 
 func TestSetSearchList(t *testing.T) {
