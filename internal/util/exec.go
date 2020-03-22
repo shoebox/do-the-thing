@@ -3,7 +3,6 @@ package util
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os/exec"
 )
 
@@ -34,7 +33,6 @@ func (e OsExec) ContextExec(ctx context.Context, name string, args ...string) ([
 }
 
 func (e OsExec) Exec(workingDir *string, cmdName string, cmdArgs ...string) ([]byte, error) {
-	fmt.Println(" >>>> ", workingDir, cmdName, cmdArgs)
 	exec := exec.Command(cmdName, cmdArgs...)
 	if workingDir != nil {
 		exec.Dir = *workingDir

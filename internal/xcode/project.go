@@ -17,18 +17,30 @@ import (
 const (
 	xCodeBuild = "xcodebuild"
 
-	flagList             = "-list"
-	flagShowDestinations = "-showdestinations"
-	flagScheme           = "-scheme"
+	flagList = "-list"
 
-	flagJSON      = "-json"
-	flagProject   = "-project"
+	// Lists the valid destinations for a project or workspace and scheme.
+	flagShowDestinations = "-showdestinations"
+
+	// Build the scheme specified by scheme name
+	flagScheme = "-scheme"
+
+	// Json Output
+	flagJSON = "-json"
+
+	// Build the project
+	flagProject = "-project"
+
+	// Build the workspace
 	flagWorkspace = "-workspace"
 )
 
 var (
 	// ErrInvalidConfig The xcodebuild answer was not valid
 	ErrInvalidConfig = errors.New("Invalid xcodedbuild list response")
+
+	// ErrDestinationResolutionFailed Failed to resolve destinations for the project
+	ErrDestinationResolutionFailed = errors.New("Command execution failed")
 )
 
 type list struct {
@@ -105,32 +117,27 @@ func (s XCodeProjectService) ListDestinations(scheme string) ([]Destination, err
 		b, err := s.exec.ContextExec(ctx,
 			xCodeBuild,
 			flagShowDestinations,
-			s.arg,
-			s.path,
-			flagScheme,
-			scheme)
-		resc <- string(b)
-		errc <- err
+			s.arg, s.path,
+			flagScheme, scheme)
+		if err != nil {
+			errc <- err
+		} else {
+			resc <- string(b)
+		}
 	}()
 
 	select {
-	case res := <-resc:
-		d := s.parseDestinations(res)
-		for _, r := range d {
-			fmt.Printf("%#v\n", r)
-		}
+	case err := <-errc: // Checking for error
+		return nil, err
+
+	case res := <-resc: // Resolving result
 		return s.parseDestinations(res), nil
 
 	case <-ctx.Done():
-		if err := ctx.Err(); err != nil {
-			return nil, err
+		if err := ctx.Err(); err != nil { // Checking for timeout
+			return nil, ErrDestinationResolutionFailed
 		}
-
-	case err := <-errc:
-		return nil, err
-
 	}
-
 	return nil, nil
 }
 
@@ -155,12 +162,14 @@ func (s XCodeProjectService) parseDestinations(data string) []Destination {
 			// Map the splitted values
 			m := map[string]string{}
 			for _, r := range indexes {
-				m[string(r[1])] = string(r[2])
+				m[string(r[1])] = strings.TrimSpace(string(r[2]))
 			}
 
 			// Populate the destination
 			dest := Destination{}
 			fillStruct(m, &dest)
+
+			// Append destination
 			res = append(res, dest)
 		}
 	}
@@ -169,10 +178,16 @@ func (s XCodeProjectService) parseDestinations(data string) []Destination {
 }
 
 func fillStruct(data map[string]string, result interface{}) interface{} {
-	t := reflect.ValueOf(result).Elem()
+	t := reflect.ValueOf(result)
+	elem := t.Elem()
+
 	for k, v := range data {
-		val := t.FieldByName(strings.Title(k))
-		val.Set(reflect.ValueOf(v))
+		name := strings.Title(k)
+		field := elem.FieldByName(name)
+		if field.IsValid() {
+			val := elem.FieldByName(name)
+			val.Set(reflect.ValueOf(v))
+		}
 	}
 
 	return result
