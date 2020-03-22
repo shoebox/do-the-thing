@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var projectSevice *XCodeProjectService
+var projectSevice XCodeProjectService
 var execMock *utiltest.MockExec
 
 var validResponse string = `{
@@ -39,9 +39,13 @@ var validResponse string = `{
 				}
 			}`
 
+var fakePath = "/path/to/project.xcodeproj"
+
 func setupServiceTest() {
 	execMock = new(utiltest.MockExec)
-	projectSevice = NewProjectService(execMock)
+	projectSevice = XCodeProjectService{exec: execMock,
+		arg:  flagProject,
+		path: fakePath}
 }
 
 func TestProjectResolution(t *testing.T) {
@@ -73,10 +77,10 @@ func TestProjectResolution(t *testing.T) {
 		setupServiceTest()
 
 		execMock.
-			On("Exec", xCodeBuild, []string{flagList, flagJSON}).
+			On("Exec", xCodeBuild, []string{flagList, flagJSON, flagProject, fakePath}).
 			Return(tc.json, tc.execErr)
 
-		_, err := projectSevice.Parse(&tc.path)
+		_, err := projectSevice.Parse()
 
 		assert.EqualValues(t, tc.expectedError, err)
 		execMock.AssertExpectations(t)
@@ -86,10 +90,10 @@ func TestProjectResolution(t *testing.T) {
 		setupServiceTest()
 
 		execMock.
-			On("Exec", xCodeBuild, []string{flagList, flagJSON}).
+			On("Exec", xCodeBuild, []string{flagList, flagJSON, flagProject, fakePath}).
 			Return(validResponse, nil)
 
-		pj, err := projectSevice.Parse(nil)
+		pj, err := projectSevice.Parse()
 		assert.NoError(t, err)
 		assert.NotNil(t, pj)
 
