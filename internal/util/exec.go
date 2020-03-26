@@ -13,6 +13,7 @@ type Exec interface {
 
 type OsExec struct{}
 
+// ContextExec execute the program with the provided arguments and context
 func (e OsExec) ContextExec(ctx context.Context, name string, args ...string) ([]byte, error) {
 	stdout := &bytes.Buffer{}
 
@@ -32,6 +33,7 @@ func (e OsExec) ContextExec(ctx context.Context, name string, args ...string) ([
 	return stdout.Bytes(), nil
 }
 
+// Exec execute the program with the provided arguments
 func (e OsExec) Exec(workingDir *string, cmdName string, cmdArgs ...string) ([]byte, error) {
 	exec := exec.Command(cmdName, cmdArgs...)
 	if workingDir != nil {

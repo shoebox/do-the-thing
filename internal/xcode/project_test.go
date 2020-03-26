@@ -222,7 +222,7 @@ func TestListDestinations(t *testing.T) {
 		assert.EqualValues(t, list[0], Destination{
 			Name:     "iPad",
 			OS:       "13.3",
-			Id:       "20ADB361-71A8-4D73-8F5D-38241750CBF5",
+			ID:       "20ADB361-71A8-4D73-8F5D-38241750CBF5",
 			Platform: "iOS Simulator",
 		})
 		assert.Nil(t, err)
@@ -245,7 +245,7 @@ func TestFillStruct(t *testing.T) {
 		fillStruct(m, &dest)
 
 		// then:
-		assert.EqualValues(t, dest, Destination{Id: "fake-id", Platform: "fake-platform"})
+		assert.EqualValues(t, dest, Destination{ID: "fake-id", Platform: "fake-platform"})
 	})
 
 	t.Run("Should handle invalid fields", func(t *testing.T) {

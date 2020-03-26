@@ -21,6 +21,7 @@ func TearDownMockExec() {
 	Exec = nil
 }
 
+// ContextExec mock execute the program with the provided arguments and context
 func (m *MockExec) ContextExec(ctx context.Context,
 	name string,
 	extra ...string) ([]byte, error) {
@@ -35,6 +36,7 @@ func (m *MockExec) ContextExec(ctx context.Context,
 	return []byte(args.String(0)), nil
 }
 
+// Exec mock execute the program with the provided arguments
 func (m *MockExec) Exec(path *string, name string, extra ...string) ([]byte, error) {
 	args := m.Called(name, extra)
 

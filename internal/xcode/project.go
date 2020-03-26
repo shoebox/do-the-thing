@@ -55,10 +55,11 @@ type Project struct {
 	Targets        []string `json:"targets"`
 }
 
+// Destination available destination for the scheme
 type Destination struct {
 	Name     string
 	Platform string
-	Id       string
+	ID       string
 	OS       string
 }
 
