@@ -78,7 +78,7 @@ type XCodeProjectService struct {
 // NewProjectService Create a new instance of the project service
 func NewProjectService(exec util.Exec, projectPath string) ProjectService {
 	arg := flagProject
-	if filepath.Ext(projectPath) == "xcworkspace" {
+	if filepath.Ext(projectPath) == ".xcworkspace" {
 		arg = flagWorkspace
 	}
 	return XCodeProjectService{exec: exec, path: projectPath, arg: arg}
@@ -102,11 +102,11 @@ func (s XCodeProjectService) Parse() (*Project, error) {
 	return &root.Project, nil
 }
 
-// ListDestinations Lists the valid destinations for a project or workspace and sche
+// ListDestinations Lists the valid destinations for a project or workspace and scheme
 func (s XCodeProjectService) ListDestinations(scheme string) ([]Destination, error) {
 
 	// Context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	errc := make(chan error, 1)

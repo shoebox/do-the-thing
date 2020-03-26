@@ -50,6 +50,32 @@ func setupServiceTest() {
 		path: fakePath}
 }
 
+func TestProjectServiceCreate(t *testing.T) {
+	t.Run("For workspaces", func(t *testing.T) {
+		// when:
+		pj := NewProjectService(execMock, "/path/test/toto.xcworkspace")
+
+		//
+		pj2, ok := pj.(XCodeProjectService)
+		assert.True(t, ok)
+
+		// then:
+		assert.EqualValues(t, "-workspace", pj2.arg)
+	})
+
+	t.Run("For project", func(t *testing.T) {
+		// when:
+		pj := NewProjectService(execMock, "/path/test/toto.xcodeproj")
+
+		//
+		pj2, ok := pj.(XCodeProjectService)
+		assert.True(t, ok)
+
+		// then:
+		assert.EqualValues(t, "-project", pj2.arg)
+	})
+}
+
 func TestProjectResolution(t *testing.T) {
 	params := []struct {
 		execErr       error
@@ -202,7 +228,7 @@ func TestListDestinations(t *testing.T) {
 		assert.Nil(t, err)
 
 		// and:
-		exec.AssertExpectations(t)
+		execMock.AssertExpectations(t)
 	})
 }
 
