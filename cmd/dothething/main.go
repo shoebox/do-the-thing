@@ -1,6 +1,7 @@
 package main
 
 import (
+	"dothething/internal/destination"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
 	"fmt"
@@ -11,12 +12,21 @@ func main() {
 	// fileUtilService := util.IoUtilFileService{}
 
 	path := "/Users/johann.martinache/Desktop/tmp/toto/test/test.xcodeproj"
-	pj := xcode.NewProjectService(exec, path)
+
+	xcodeService := xcode.NewService(exec, path)
+
+	pj := xcode.NewProjectService(xcodeService)
+	fmt.Println(pj.Parse())
+
+	dest := destination.NewDestinationService(xcodeService)
+	d, err := dest.List("test")
+	fmt.Println(d, err)
+
 	// p, err := pj.Parse()
 	// fmt.Println(p, err)
 
-	dd, err := pj.ListDestinations("test")
-	fmt.Println(dd, err)
+	// dd, err := pj.ListDestinations("test")
+	// fmt.Println(dd, err)
 
 	/*
 		k := keychain.NewKeyChain(exec)
