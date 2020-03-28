@@ -1,7 +1,6 @@
 package destination
 
 import (
-	"dothething/internal/utiltest"
 	"dothething/internal/xcode"
 	"errors"
 	"testing"
@@ -10,9 +9,6 @@ import (
 )
 
 var projectSevice XCodeDestinationService
-var execMock *utiltest.MockExec
-
-var fakePath = "/path/to/project.xcodeproj"
 var xMock *xcode.MockXCodeBuildService
 
 func setupServiceTest() {
