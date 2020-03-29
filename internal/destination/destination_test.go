@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var projectSevice XCodeDestinationService
+var projectSevice destinationService
 var xMock *xcode.MockXCodeBuildService
 
 func setupServiceTest() {
 	xMock = new(xcode.MockXCodeBuildService)
-	projectSevice = XCodeDestinationService{xcode: xMock}
+	projectSevice = destinationService{xcode: xMock}
 }
 
 func TestListDestinations(t *testing.T) {

@@ -2,12 +2,25 @@ package destination
 
 import (
 	"bufio"
+	"context"
 	"errors"
+	"time"
 
+	"dothething/internal/util"
 	"dothething/internal/xcode"
 	"reflect"
 	"regexp"
 	"strings"
+
+	"github.com/rs/zerolog/log"
+)
+
+const (
+	actionBoot       = "boot"
+	actionBootStatus = "bootstatus"
+	actionShutdown   = "shutdown"
+	simCtl           = "simctl"
+	xcRun            = "xcrun"
 )
 
 // ErrDestinationResolutionFailed Failed to resolve destinations for the project
@@ -21,38 +34,102 @@ type Destination struct {
 	OS       string
 }
 
+// DestinationService destination service definition
 type DestinationService interface {
-	Boot(d Destination)
+	Boot(d Destination) error
 	List(scheme string) ([]Destination, error)
+	ShutDown(d Destination) error
 }
 
-type XCodeDestinationService struct {
+type destinationService struct {
 	xcode xcode.XCodeBuildService
+	exec  util.Exec
 }
 
 // NewDestinationService Create a new instance of the project service
-func NewDestinationService(service xcode.XCodeBuildService) DestinationService {
-	return XCodeDestinationService{xcode: service}
+func NewDestinationService(service xcode.XCodeBuildService, exec util.Exec) DestinationService {
+	return destinationService{exec: exec, xcode: service}
 }
 
 // Boot boot a destination
-func (s XCodeDestinationService) Boot(d Destination) {
+func (s destinationService) Boot(d Destination) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
+
+	errc := make(chan error, 1)
+	resc := make(chan string, 1)
+
+	go s.waitForBoot(ctx, d, resc, errc)
+	go s.bootDestination(ctx, d)
+
+	select {
+	case err := <-errc: // Checking for error
+		return err
+
+	case res := <-resc: // Resolving result
+		log.Debug().Str("Result", res).Msg("Booting results")
+		return nil
+
+	case <-ctx.Done():
+		if err := ctx.Err(); err != nil { // Checking for timeout
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s destinationService) waitForBoot(ctx context.Context,
+	d Destination,
+	resc chan string,
+	errc chan error) error {
+	log.Info().Str("Destination ID", d.Id).Msg("Waiting for boot of destination")
+
+	go func() {
+		b, err := s.exec.ContextExec(ctx, xcRun, simCtl, actionBootStatus, d.Id)
+		if err != nil {
+			errc <- err
+		} else {
+			resc <- string(b)
+		}
+	}()
+
+	return nil
+}
+
+func (s destinationService) bootDestination(ctx context.Context, d Destination) error {
+	log.Info().Str("Destination ID", d.Id).Msg("Booting destination")
+	if _, err := s.exec.ContextExec(ctx, xcRun, simCtl, actionBoot, d.Id); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // InstallOnDestination Install an app on a device
-func (s XCodeDestinationService) Install(d Destination, path string) {
+func (s destinationService) Install(d Destination, path string) {
 }
 
 // LaunchOnDestination launch an application by identifier on a device
-func (s XCodeDestinationService) Launch(d Destination, id string) {
+func (s destinationService) Launch(d Destination, id string) {
 }
 
 // ShutDown a device
-func (s XCodeDestinationService) ShutDown(d Destination) {
+func (s destinationService) ShutDown(d Destination) error {
+	log.Info().Str("Destination ID", d.Id).Msg("Shutdown destination")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
+
+	if _, err := s.exec.ContextExec(ctx, xcRun, simCtl, actionShutdown, d.Id); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ListDestinations Lists the valid destinations for a project or workspace and scheme
-func (s XCodeDestinationService) List(scheme string) ([]Destination, error) {
+func (s destinationService) List(scheme string) ([]Destination, error) {
 	res, err := s.xcode.ShowDestinations(scheme)
 	if err != nil {
 		return nil, ErrDestinationResolutionFailed
@@ -61,7 +138,7 @@ func (s XCodeDestinationService) List(scheme string) ([]Destination, error) {
 	return s.parseDestinations(res), nil
 }
 
-func (s XCodeDestinationService) parseDestinations(data string) []Destination {
+func (s destinationService) parseDestinations(data string) []Destination {
 	// Result
 	res := []Destination{}
 

@@ -5,9 +5,17 @@ import (
 	"dothething/internal/util"
 	"dothething/internal/xcode"
 	"fmt"
+	"os"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
+	// logger
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
 	exec := util.OsExec{}
 	// fileUtilService := util.IoUtilFileService{}
 
@@ -18,9 +26,15 @@ func main() {
 	pj := xcode.NewProjectService(xcodeService)
 	fmt.Println(pj.Parse())
 
-	dest := destination.NewDestinationService(xcodeService)
+	dest := destination.NewDestinationService(xcodeService, exec)
 	d, err := dest.List("test")
 	fmt.Println(d, err)
+
+	err = dest.Boot(d[0])
+	fmt.Println(err)
+
+	err = dest.ShutDown(d[0])
+	fmt.Println("shutdown ", err)
 
 	// p, err := pj.Parse()
 	// fmt.Println(p, err)

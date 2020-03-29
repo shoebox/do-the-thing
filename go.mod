@@ -11,7 +11,7 @@ require (
 	github.com/mattn/go-shellwords v1.0.10 // indirect
 	github.com/reviewdog/errorformat v0.0.0-20200317090559-6a794756a263 // indirect
 	github.com/reviewdog/reviewdog v0.9.17 // indirect
-	github.com/rs/zerolog v1.18.0 // indirect
+	github.com/rs/zerolog v1.18.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.4.0

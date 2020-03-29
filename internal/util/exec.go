@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"os/exec"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Exec interface {
@@ -15,6 +17,8 @@ type OsExec struct{}
 
 // ContextExec execute the program with the provided arguments and context
 func (e OsExec) ContextExec(ctx context.Context, name string, args ...string) ([]byte, error) {
+	log.Debug().Str("name", name).Strs("Args", args).Msg("Execute with context")
+	//Msg("Execute with context")
 	stdout := &bytes.Buffer{}
 
 	cmd := exec.CommandContext(ctx, name, args...)
