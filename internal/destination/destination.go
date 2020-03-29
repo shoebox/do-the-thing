@@ -22,8 +22,7 @@ const (
 	simCtl           = "simctl"
 	xcRun            = "xcrun"
 
-	flagBoot       = "-b" // Boot the device if it isn't already booted
-	flagMonitoring = "-c"
+	flagBoot = "-b" // Boot the device if it isn't already booted
 )
 
 // ErrDestinationResolutionFailed Failed to resolve destinations for the project
@@ -100,13 +99,6 @@ func (s destinationService) xcRun(ctx context.Context,
 			resc <- string(b)
 		}
 	}()
-}
-
-func (s destinationService) bootDestination(ctx context.Context, d Destination, errc chan error) {
-	log.Info().Str("Destination ID", d.Id).Msg("Booting destination")
-	if _, err := s.exec.ContextExec(ctx, xcRun, simCtl, actionBoot, d.Id); err != nil {
-		errc <- err
-	}
 }
 
 // InstallOnDestination Install an app on a device

@@ -26,17 +26,23 @@ func (e OsExec) ContextExec(ctx context.Context, name string, args ...string) ([
 
 	err := cmd.Start()
 	if err != nil {
-		log.Debug().AnErr("Error", err).Msg("Command start error")
+		log.Debug().
+			AnErr("Error", err).
+			Msg("Command start error")
 		return nil, err
 	}
 
 	err = cmd.Wait()
 	if err != nil {
-		log.Debug().AnErr("Error", err).Msg("Command execution error")
+		log.Debug().
+			AnErr("Error", err).
+			Msg("Command execution error")
 		return nil, err
 	}
 
-	log.Debug().Str("Response", string(stdout.Bytes())).Msg("Execution result")
+	log.Debug().
+		Str("Response", stdout.String()).
+		Msg("Execution result")
 
 	return stdout.Bytes(), nil
 }
