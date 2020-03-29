@@ -21,6 +21,9 @@ const (
 	actionShutdown   = "shutdown"
 	simCtl           = "simctl"
 	xcRun            = "xcrun"
+
+	flagBoot       = "-b" // Boot the device if it isn't already booted
+	flagMonitoring = "-c"
 )
 
 // ErrDestinationResolutionFailed Failed to resolve destinations for the project
@@ -53,15 +56,17 @@ func NewDestinationService(service xcode.XCodeBuildService, exec util.Exec) Dest
 
 // Boot boot a destination
 func (s destinationService) Boot(d Destination) error {
-
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	errc := make(chan error, 1)
 	resc := make(chan string, 1)
 
-	go s.waitForBoot(ctx, d, resc, errc)
-	go s.bootDestination(ctx, d)
+	log.Info().
+		Str("Destination ID", d.Id).
+		Msg("Waiting for boot of destination")
+
+	go s.xcRun(ctx, resc, errc, actionBootStatus, d.Id, flagBoot)
 
 	select {
 	case err := <-errc: // Checking for error
@@ -80,31 +85,28 @@ func (s destinationService) Boot(d Destination) error {
 	return nil
 }
 
-func (s destinationService) waitForBoot(ctx context.Context,
-	d Destination,
+func (s destinationService) xcRun(ctx context.Context,
 	resc chan string,
-	errc chan error) error {
-	log.Info().Str("Destination ID", d.Id).Msg("Waiting for boot of destination")
+	errc chan error,
+	args ...string) {
+
+	a := append([]string{simCtl}, args...)
 
 	go func() {
-		b, err := s.exec.ContextExec(ctx, xcRun, simCtl, actionBootStatus, d.Id)
+		b, err := s.exec.ContextExec(ctx, xcRun, a...)
 		if err != nil {
 			errc <- err
 		} else {
 			resc <- string(b)
 		}
 	}()
-
-	return nil
 }
 
-func (s destinationService) bootDestination(ctx context.Context, d Destination) error {
+func (s destinationService) bootDestination(ctx context.Context, d Destination, errc chan error) {
 	log.Info().Str("Destination ID", d.Id).Msg("Booting destination")
 	if _, err := s.exec.ContextExec(ctx, xcRun, simCtl, actionBoot, d.Id); err != nil {
-		return err
+		errc <- err
 	}
-
-	return nil
 }
 
 // InstallOnDestination Install an app on a device
