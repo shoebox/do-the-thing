@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	actionBoot       = "boot"
 	actionBootStatus = "bootstatus"
 	actionShutdown   = "shutdown"
 	simCtl           = "simctl"
