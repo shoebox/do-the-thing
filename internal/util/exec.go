@@ -13,10 +13,15 @@ type Exec interface {
 	ContextExec(ctx context.Context, name string, args ...string) ([]byte, error)
 }
 
-type OsExec struct{}
+type osExec struct{}
+
+// NewCommandRunner create a new instance of the executor helper
+func NewCommandRunner() Exec {
+	return osExec{}
+}
 
 // ContextExec execute the program with the provided arguments and context
-func (e OsExec) ContextExec(ctx context.Context, name string, args ...string) ([]byte, error) {
+func (e osExec) ContextExec(ctx context.Context, name string, args ...string) ([]byte, error) {
 	log.Debug().Str("name", name).Strs("Args", args).Msg("Execute with context")
 	//Msg("Execute with context")
 	stdout := &bytes.Buffer{}
@@ -48,7 +53,7 @@ func (e OsExec) ContextExec(ctx context.Context, name string, args ...string) ([
 }
 
 // Exec execute the program with the provided arguments
-func (e OsExec) Exec(workingDir *string, cmdName string, cmdArgs ...string) ([]byte, error) {
+func (e osExec) Exec(workingDir *string, cmdName string, cmdArgs ...string) ([]byte, error) {
 	exec := exec.Command(cmdName, cmdArgs...)
 	if workingDir != nil {
 		exec.Dir = *workingDir

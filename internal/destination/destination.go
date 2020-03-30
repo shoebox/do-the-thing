@@ -106,6 +106,10 @@ func (s destinationService) Install(d Destination, path string) {
 
 // LaunchOnDestination launch an application by identifier on a device
 func (s destinationService) Launch(d Destination, id string) {
+	// # find the id that points to the location of the encoded file in the .xcresult bundle
+	// id=$(xcrun xcresulttool get --format json --path Tests.xcresult | jq '.actions._values[]' | jq -r '.actionResult.logRef.id._value')
+	// # export the log found at the the id in the .xcresult bundle
+	// xcrun xcresulttool export --path Tests.xcresult --id $id --output-path TestsStdErrorStdout.log --type file
 }
 
 // ShutDown a device

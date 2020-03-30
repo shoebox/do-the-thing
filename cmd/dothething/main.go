@@ -16,7 +16,7 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
-	exec := util.OsExec{}
+	exec := util.NewCommandRunner()
 	// fileUtilService := util.IoUtilFileService{}
 
 	path := "/Users/johann.martinache/Desktop/tmp/toto/test/test.xcodeproj"
