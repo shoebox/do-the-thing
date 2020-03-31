@@ -53,7 +53,6 @@ func NewDestinationService(service xcode.XCodeBuildService, exec util.Exec) Dest
 
 // Boot boot a destination
 func (s destinationService) Boot(ctx context.Context, d Destination) error {
-
 	errc := make(chan error, 1)
 	resc := make(chan string, 1)
 

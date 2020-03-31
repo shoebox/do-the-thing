@@ -12,17 +12,6 @@ type mockExec struct {
 	mock.Mock
 }
 
-// var MockExecutor *MockExec
-var MockExec *mockExec
-
-func SetupMockExec() {
-	MockExec = new(mockExec)
-}
-
-func TearDownMockExec() {
-	MockExec = nil
-}
-
 // ContextExec mock execute the program with the provided arguments and context
 func (m *mockExec) ContextExec(ctx context.Context,
 	name string,
