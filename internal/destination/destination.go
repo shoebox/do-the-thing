@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"time"
 
 	"dothething/internal/util"
 	"dothething/internal/xcode"
@@ -37,9 +36,9 @@ type Destination struct {
 
 // DestinationService destination service definition
 type DestinationService interface {
-	Boot(d Destination) error
+	Boot(ctx context.Context, d Destination) error
 	List(scheme string) ([]Destination, error)
-	ShutDown(d Destination) error
+	ShutDown(ctx context.Context, d Destination) error
 }
 
 type destinationService struct {
@@ -53,9 +52,7 @@ func NewDestinationService(service xcode.XCodeBuildService, exec util.Exec) Dest
 }
 
 // Boot boot a destination
-func (s destinationService) Boot(d Destination) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel() // The cancel should be deferred so resources are cleaned up
+func (s destinationService) Boot(ctx context.Context, d Destination) error {
 
 	errc := make(chan error, 1)
 	resc := make(chan string, 1)
@@ -94,30 +91,17 @@ func (s destinationService) xcRun(ctx context.Context,
 		b, err := s.exec.ContextExec(ctx, xcRun, a...)
 		if err != nil {
 			errc <- err
+			resc <- ""
 		} else {
 			resc <- string(b)
+			errc <- nil
 		}
 	}()
 }
 
-// InstallOnDestination Install an app on a device
-func (s destinationService) Install(d Destination, path string) {
-}
-
-// LaunchOnDestination launch an application by identifier on a device
-func (s destinationService) Launch(d Destination, id string) {
-	// # find the id that points to the location of the encoded file in the .xcresult bundle
-	// id=$(xcrun xcresulttool get --format json --path Tests.xcresult | jq '.actions._values[]' | jq -r '.actionResult.logRef.id._value')
-	// # export the log found at the the id in the .xcresult bundle
-	// xcrun xcresulttool export --path Tests.xcresult --id $id --output-path TestsStdErrorStdout.log --type file
-}
-
 // ShutDown a device
-func (s destinationService) ShutDown(d Destination) error {
+func (s destinationService) ShutDown(ctx context.Context, d Destination) error {
 	log.Info().Str("Destination ID", d.Id).Msg("Shutdown destination")
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel() // The cancel should be deferred so resources are cleaned up
-
 	if _, err := s.exec.ContextExec(ctx, xcRun, simCtl, actionShutdown, d.Id); err != nil {
 		return err
 	}

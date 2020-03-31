@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"dothething/internal/destination"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -30,11 +32,21 @@ func main() {
 	d, err := dest.List("test")
 	fmt.Println(d, err)
 
-	err = dest.Boot(d[0])
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
+
+	err = dest.Boot(ctx, d[0])
 	fmt.Println(err)
 
-	err = dest.ShutDown(d[0])
+	err = dest.ShutDown(ctx, d[0])
 	fmt.Println("shutdown ", err)
+
+	/*
+		// # find the id that points to the location of the encoded file in the .xcresult bundle
+		// id=$(xcrun xcresulttool get --format json --path Tests.xcresult | jq '.actions._values[]' | jq -r '.actionResult.logRef.id._value')
+		// # export the log found at the the id in the .xcresult bundle
+		// xcrun xcresulttool export --path Tests.xcresult --id $id --output-path TestsStdErrorStdout.log --type file
+	*/
 
 	// p, err := pj.Parse()
 	// fmt.Println(p, err)
