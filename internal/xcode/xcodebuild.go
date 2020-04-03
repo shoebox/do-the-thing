@@ -4,7 +4,6 @@ import (
 	"context"
 	"dothething/internal/util"
 	"path/filepath"
-	"time"
 )
 
 const (
@@ -29,40 +28,38 @@ const (
 	FlagWorkspace = "-workspace"
 )
 
+// XCodeBuildService service definition
 type XCodeBuildService interface {
-	List() (string, error)
-	ShowDestinations(scheme string) (string, error)
-	Run(arg ...string) (string, error)
+	List(ctx context.Context) (string, error)
+	ShowDestinations(ctx context.Context, scheme string) (string, error)
+	Run(ctx context.Context, arg ...string) (string, error)
 }
 
-type XCodeBuildServiceImpl struct {
+type xcodeBuildService struct {
 	exec        util.Exec
 	arg         string
 	projectPath string
 }
 
+// NewService creates a new instance of the xcodebuild service
 func NewService(exec util.Exec, projectPath string) XCodeBuildService {
 	arg := FlagProject
 	if filepath.Ext(projectPath) == ".xcworkspace" {
 		arg = FlagWorkspace
 	}
-	return XCodeBuildServiceImpl{exec: exec, arg: arg, projectPath: projectPath}
+	return xcodeBuildService{exec: exec, arg: arg, projectPath: projectPath}
 }
 
 // List Lists the targets and configurations in a project, or the schemes in a workspace
-func (s XCodeBuildServiceImpl) List() (string, error) {
-	return s.Run(flagList, flagJSON, s.arg, s.projectPath)
+func (s xcodeBuildService) List(ctx context.Context) (string, error) {
+	return s.Run(ctx, flagList, flagJSON, s.arg, s.projectPath)
 }
 
-func (s XCodeBuildServiceImpl) ShowDestinations(scheme string) (string, error) {
-	return s.Run(FlagShowDestinations, s.arg, s.projectPath, FlagScheme, scheme)
+func (s xcodeBuildService) ShowDestinations(ctx context.Context, scheme string) (string, error) {
+	return s.Run(ctx, FlagShowDestinations, s.arg, s.projectPath, FlagScheme, scheme)
 }
 
-func (s XCodeBuildServiceImpl) Run(arg ...string) (string, error) {
-	// Context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel() // The cancel should be deferred so resources are cleaned up
-
+func (s xcodeBuildService) Run(ctx context.Context, arg ...string) (string, error) {
 	errc := make(chan error, 1)
 	resc := make(chan string, 1)
 

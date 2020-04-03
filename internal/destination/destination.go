@@ -37,7 +37,7 @@ type Destination struct {
 // DestinationService destination service definition
 type DestinationService interface {
 	Boot(ctx context.Context, d Destination) error
-	List(scheme string) ([]Destination, error)
+	List(ctx context.Context, scheme string) ([]Destination, error)
 	ShutDown(ctx context.Context, d Destination) error
 }
 
@@ -109,8 +109,8 @@ func (s destinationService) ShutDown(ctx context.Context, d Destination) error {
 }
 
 // ListDestinations Lists the valid destinations for a project or workspace and scheme
-func (s destinationService) List(scheme string) ([]Destination, error) {
-	res, err := s.xcode.ShowDestinations(scheme)
+func (s destinationService) List(ctx context.Context, scheme string) ([]Destination, error) {
+	res, err := s.xcode.ShowDestinations(ctx, scheme)
 	if err != nil {
 		return nil, ErrDestinationResolutionFailed
 	}

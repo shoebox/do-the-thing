@@ -1,11 +1,14 @@
 package xcode
 
 import (
+	"context"
 	"dothething/internal/utiltest"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 const validResponse string = `{
@@ -41,7 +44,7 @@ const fakePath = "/path/to/project.xcodeproj"
 var execMock *utiltest.MockExec
 var projectService XCodeProjectService
 
-func TestMain(m *testing.M) {
+func setup() {
 	execMock = new(utiltest.MockExec)
 	projectService = XCodeProjectService{xcodeService: NewService(execMock, fakePath)}
 }
@@ -70,13 +73,16 @@ func TestCases(t *testing.T) {
 			path:          "/r/t",
 		},
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	for _, tc := range params {
+		setup()
 		execMock.
-			On("ContextExec", XCodeBuild, []string{flagList, flagJSON, FlagProject, fakePath}).
+			On("ContextExec", mock.Anything, XCodeBuild, []string{flagList, flagJSON, FlagProject, fakePath}).
 			Return(tc.json, tc.execErr)
 
-		_, err := projectService.Parse()
+		_, err := projectService.Parse(ctx)
 
 		assert.EqualValues(t, tc.expectedError, err)
 		execMock.AssertExpectations(t)
@@ -84,13 +90,16 @@ func TestCases(t *testing.T) {
 }
 
 func TestProjectResolution(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	t.Run("Should properly call xcodedbuild and parse the result", func(t *testing.T) {
+		setup()
 		execMock.
-			On("ContextExec", XCodeBuild, []string{flagList, flagJSON, FlagProject, fakePath}).
+			On("ContextExec", mock.Anything, XCodeBuild, []string{flagList, flagJSON, FlagProject, fakePath}).
 			Return(validResponse, nil)
 
-		pj, err := projectService.Parse()
+		pj, err := projectService.Parse(ctx)
 		assert.NoError(t, err)
 		assert.NotNil(t, pj)
 

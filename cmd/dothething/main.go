@@ -18,22 +18,22 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
+	// Context
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
+
 	exec := util.NewCommandRunner()
-	// fileUtilService := util.IoUtilFileService{}
 
 	path := "/Users/johann.martinache/Desktop/tmp/toto/test/test.xcodeproj"
 
 	xcodeService := xcode.NewService(exec, path)
 
 	pj := xcode.NewProjectService(xcodeService)
-	fmt.Println(pj.Parse())
+	fmt.Println(pj.Parse(ctx))
 
 	dest := destination.NewDestinationService(xcodeService, exec)
-	d, err := dest.List("test")
+	d, err := dest.List(ctx, "test")
 	fmt.Println(d, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	err = dest.Boot(ctx, d[0])
 	fmt.Println(err)
