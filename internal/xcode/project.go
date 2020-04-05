@@ -1,18 +1,10 @@
 package xcode
 
 import (
-	"dothething/internal/util"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-)
-
-const (
-	xCodeBuild = "xcodebuild"
-
-	flagList = "-list"
-
-	flagJSON = "-json"
 )
 
 var (
@@ -34,22 +26,23 @@ type Project struct {
 
 // ProjectService interface
 type ProjectService interface {
+	Parse(ctx context.Context) (*Project, error)
 }
 
 // XCodeProjectService struct definition
 type XCodeProjectService struct {
-	exec util.Exec
+	xcodeService XCodeBuildService
 }
 
 // NewProjectService Create a new instance of the project service
-func NewProjectService(exec util.Exec) *XCodeProjectService {
-	return &XCodeProjectService{exec: exec}
+func NewProjectService(service XCodeBuildService) ProjectService {
+	return XCodeProjectService{xcodeService: service}
 }
 
 // Parse the project
-func (s *XCodeProjectService) Parse(projectPath *string) (*Project, error) {
+func (s XCodeProjectService) Parse(ctx context.Context) (*Project, error) {
 	// Execute the list call to xcodebuild
-	data, err := s.xCodeCall(projectPath)
+	data, err := s.xCodeCall(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to call xcode API (Error : %s)", err)
 	}
@@ -63,7 +56,11 @@ func (s *XCodeProjectService) Parse(projectPath *string) (*Project, error) {
 
 	return &root.Project, nil
 }
+func (s XCodeProjectService) xCodeCall(ctx context.Context) ([]byte, error) {
+	str, err := s.xcodeService.List(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-func (s *XCodeProjectService) xCodeCall(path *string) ([]byte, error) {
-	return s.exec.Exec(path, xCodeBuild, flagList, flagJSON)
+	return []byte(str), nil
 }

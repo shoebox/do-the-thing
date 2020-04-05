@@ -33,7 +33,7 @@ type Install struct {
 	Version       string
 }
 
-// XCodeListService Service to retrieve the list of xcode installation on the sytem
+// XCodeListService Service to retrieve the list of xcode installation on the system
 type XCodeListService struct {
 	exec util.Exec
 	file util.FileService

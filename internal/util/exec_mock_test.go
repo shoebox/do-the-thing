@@ -1,4 +1,6 @@
-package utiltest
+// +build !test
+
+package util
 
 import (
 	"context"
@@ -6,23 +8,12 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type MockExec struct {
+type mockExec struct {
 	mock.Mock
 }
 
-var MockExecutor *MockExec
-var Exec *MockExec
-
-func SetupMockExec() {
-	Exec = new(MockExec)
-}
-
-func TearDownMockExec() {
-	Exec = nil
-}
-
 // ContextExec mock execute the program with the provided arguments and context
-func (m *MockExec) ContextExec(ctx context.Context,
+func (m *mockExec) ContextExec(ctx context.Context,
 	name string,
 	extra ...string) ([]byte, error) {
 
@@ -37,7 +28,7 @@ func (m *MockExec) ContextExec(ctx context.Context,
 }
 
 // Exec mock execute the program with the provided arguments
-func (m *MockExec) Exec(path *string, name string, extra ...string) ([]byte, error) {
+func (m *mockExec) Exec(path *string, name string, extra ...string) ([]byte, error) {
 	args := m.Called(name, extra)
 
 	if args.Error(1) != nil {
