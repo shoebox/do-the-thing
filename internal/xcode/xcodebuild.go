@@ -15,6 +15,9 @@ const (
 
 	flagJSON = "-json"
 
+	// FlagDestination destination specifier describing the device (or devices) to use as a destination
+	FlagDestination = "-destination"
+
 	// FlagShowDestinations Lists the valid destinations for a project or workspace and scheme.
 	FlagShowDestinations = "-showdestinations"
 
@@ -26,23 +29,29 @@ const (
 
 	// FlagWorkspace Build the designated workspace
 	FlagWorkspace = "-workspace"
+
+	// FlagResultBundlePath Writes a bundle to the specified path with results from performing an
+	// action on a scheme in a workspace
+	FlagResultBundlePath = "-resultBundlePath"
+
+	// ActionTest Test a scheme from the build root
+	ActionTest = "test"
 )
 
 // XCodeBuildService service definition
 type XCodeBuildService interface {
 	List(ctx context.Context) (string, error)
 	ShowDestinations(ctx context.Context, scheme string) (string, error)
-	Run(ctx context.Context, arg ...string) (string, error)
 }
 
 type xcodeBuildService struct {
-	exec        util.Exec
+	exec        util.Executor
 	arg         string
 	projectPath string
 }
 
 // NewService creates a new instance of the xcodebuild service
-func NewService(exec util.Exec, projectPath string) XCodeBuildService {
+func NewService(exec util.Executor, projectPath string) XCodeBuildService {
 	arg := FlagProject
 	if filepath.Ext(projectPath) == ".xcworkspace" {
 		arg = FlagWorkspace
@@ -52,41 +61,24 @@ func NewService(exec util.Exec, projectPath string) XCodeBuildService {
 
 // List Lists the targets and configurations in a project, or the schemes in a workspace
 func (s xcodeBuildService) List(ctx context.Context) (string, error) {
-	return s.Run(ctx, flagList, flagJSON, s.arg, s.projectPath)
+	cmd := s.exec.CommandContext(ctx, XCodeBuild, flagList, flagJSON, s.arg, s.projectPath)
+	b, err := cmd.Output()
+	if err != nil {
+		return "", handleXcodebuildError(err)
+	}
+
+	return string(b), nil
 }
 
 func (s xcodeBuildService) ShowDestinations(ctx context.Context, scheme string) (string, error) {
-	return s.Run(ctx, FlagShowDestinations, s.arg, s.projectPath, FlagScheme, scheme)
-}
+	cmd := s.exec.CommandContext(ctx,
+		XCodeBuild,
+		FlagShowDestinations,
+		s.arg,
+		s.projectPath,
+		FlagScheme,
+		scheme)
 
-func (s xcodeBuildService) Run(ctx context.Context, arg ...string) (string, error) {
-	errc := make(chan error, 1)
-	resc := make(chan string, 1)
-
-	// Execute command
-	go func() {
-		b, err := s.exec.ContextExec(ctx,
-			XCodeBuild,
-			arg...)
-		if err != nil {
-			errc <- err
-		} else {
-			resc <- string(b)
-		}
-	}()
-
-	select {
-	case err := <-errc: // Checking for error
-		return "", err
-
-	case res := <-resc: // Resolving result
-		return res, nil
-
-	case <-ctx.Done():
-		if err := ctx.Err(); err != nil { // Checking for timeout
-			return "", err
-		}
-	}
-
-	return "", nil
+	b, err := cmd.Output()
+	return string(b), handleXcodebuildError(err)
 }

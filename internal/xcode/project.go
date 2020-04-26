@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 )
 
 var (
@@ -29,22 +28,22 @@ type ProjectService interface {
 	Parse(ctx context.Context) (*Project, error)
 }
 
-// XCodeProjectService struct definition
-type XCodeProjectService struct {
+// projectService struct definition
+type projectService struct {
 	xcodeService XCodeBuildService
 }
 
 // NewProjectService Create a new instance of the project service
 func NewProjectService(service XCodeBuildService) ProjectService {
-	return XCodeProjectService{xcodeService: service}
+	return projectService{xcodeService: service}
 }
 
 // Parse the project
-func (s XCodeProjectService) Parse(ctx context.Context) (*Project, error) {
+func (s projectService) Parse(ctx context.Context) (*Project, error) {
 	// Execute the list call to xcodebuild
 	data, err := s.xCodeCall(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to call xcode API (Error : %s)", err)
+		return nil, err
 	}
 
 	// Unmarshall the response
@@ -56,7 +55,8 @@ func (s XCodeProjectService) Parse(ctx context.Context) (*Project, error) {
 
 	return &root.Project, nil
 }
-func (s XCodeProjectService) xCodeCall(ctx context.Context) ([]byte, error) {
+
+func (s projectService) xCodeCall(ctx context.Context) ([]byte, error) {
 	str, err := s.xcodeService.List(ctx)
 	if err != nil {
 		return nil, err

@@ -3,6 +3,7 @@ package xcode
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"dothething/internal/util"
 	"io"
 	"path/filepath"
@@ -23,7 +24,7 @@ const (
 
 // ListService basic interface
 type ListService interface {
-	List() ([]*Install, error)
+	List(ctx context.Context) ([]*Install, error)
 }
 
 // Install xcode installation definition
@@ -33,61 +34,62 @@ type Install struct {
 	Version       string
 }
 
-// XCodeListService Service to retrieve the list of xcode installation on the system
-type XCodeListService struct {
-	exec util.Exec
+// listService Service to retrieve the list of xcode installation on the system
+type listService struct {
+	exec util.Executor
 	file util.FileService
 }
 
 // New create a new instance of the service
-func NewXCodeListService(exec util.Exec, file util.FileService) ListService {
-	return XCodeListService{exec: exec, file: util.IoUtilFileService{}}
+func NewXCodeListService(exec util.Executor, file util.FileService) ListService {
+	return listService{exec: exec, file: util.IoUtilFileService{}}
 }
 
 // List return all system XCode installation
-func (s XCodeListService) List() ([]*Install, error) {
-	data, err := s.spotlightSearch()
+func (s listService) List(ctx context.Context) ([]*Install, error) {
+	data, err := s.spotlightSearch(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	list, err := s.parseSpotlightSearchResult(bytes.NewReader(data))
-	return list, err
+	return s.parseSpotlightSearchResult(bytes.NewReader(data))
 }
 
-func (s XCodeListService) spotlightSearch() ([]byte, error) {
-	return s.exec.Exec(nil, MdFind, XCodeBundleIdentifier)
+func (s listService) spotlightSearch(ctx context.Context) ([]byte, error) {
+	return s.exec.CommandContext(ctx, MdFind, XCodeBundleIdentifier).Output()
 }
 
-func (s XCodeListService) parseSpotlightSearchResult(reader io.Reader) ([]*Install, error) {
+func (s listService) parseSpotlightSearchResult(reader io.Reader) ([]*Install, error) {
 	result := []*Install{}
-
 	scanner := bufio.NewScanner(reader)
 
 	for scanner.Scan() {
 		path := scanner.Text()
-		valid, err := s.validate(path)
-		if err != nil || !valid {
-			logr.Error(err)
-			continue
-		}
-
-		x, err := s.resolveXcode(path)
+		i, err := s.parseSpotlightEntry(path)
 		if err != nil {
 			logr.Error(err)
 			continue
 		}
-		result = append(result, x)
+
+		result = append(result, i)
 	}
 
 	return result, nil
 }
 
-func (s XCodeListService) validate(path string) (bool, error) {
+func (s listService) parseSpotlightEntry(path string) (*Install, error) {
+	if valid, err := s.validate(path); err != nil || !valid {
+		return nil, err
+	}
+
+	return s.resolveXcode(path)
+}
+
+func (s listService) validate(path string) (bool, error) {
 	return s.file.IsDir(path)
 }
 
-func (s XCodeListService) resolveXcode(path string) (*Install, error) {
+func (s listService) resolveXcode(path string) (*Install, error) {
 	abs, err := filepath.Abs(path + ContentPListFile)
 	if err != nil {
 		return nil, err

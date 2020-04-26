@@ -2,10 +2,6 @@ package signature
 
 import (
 	"dothething/internal/utiltest"
-	"errors"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var mockExec *utiltest.MockExec
@@ -132,6 +128,7 @@ func setup() {
 	mockExec = new(utiltest.MockExec)
 }
 
+/*
 func TestProvisioningProfileDecoding(t *testing.T) {
 	path := "test/path/test.mobileprovision"
 
@@ -265,3 +262,4 @@ func TestFileDecodingExecution(t *testing.T) {
 	})
 
 }
+*/

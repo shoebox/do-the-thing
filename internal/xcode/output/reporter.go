@@ -1,0 +1,27 @@
+package output
+
+type reporter interface {
+	BuildTimeSummary(e LogEntry)
+	CompileCommand(e LogEntry)
+	FormatAnalyze(e LogEntry)
+	FormatAnalyzeTarget(e LogEntry)
+	FormatAggregateTarget(e LogEntry)
+	FormatBuildTarget(e LogEntry)
+	FormatCheckDependencies(e LogEntry)
+	CleanRemove(e LogEntry)
+	CleanTarget(e LogEntry)
+	CodeSign(e LogEntry)
+	CompileStoryboard(e LogEntry)
+	CompileXIB(e LogEntry)
+	CopyHeader(e LogEntry)
+	Copy(e LogEntry)
+	GenerateDSym(e LogEntry)
+	LibTool(e LogEntry)
+	Linking(e LogEntry)
+	RunningShellCommand(e LogEntry)
+	TestFailing(e LogEntry)
+	TestPassed(e LogEntry)
+	TestSuiteStart(e LogEntry)
+	TillUtif(e LogEntry)
+	Touch(e LogEntry)
+}

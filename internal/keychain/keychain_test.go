@@ -1,337 +1,206 @@
 package keychain
 
 import (
+	"context"
 	"dothething/internal/utiltest"
 	"errors"
-	"fmt"
-	"io/ioutil"
-	"os"
 	"testing"
+	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 )
 
-var mockExec *utiltest.MockExec
-var subject KeyChainHandler
-var tmpFile *os.File
+var errText = "mock error"
 
-func TestKeychainMain(t *testing.T) {
-	mockExec = new(utiltest.MockExec)
-
-	var err error
-	tmpFile, err = ioutil.TempFile("", "test.*.keychain")
-	assert.NoError(t, err)
-	assert.NotNil(t, tmpFile)
-
-	subject = KeyChainHandler{exec: mockExec, filePath: tmpFile.Name()}
-	t.Cleanup(func() {
-		fmt.Println("clean")
-	})
+type keychainTestSuite struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+	cmd    *utiltest.MockExecutorCmd
+	suite.Suite
+	subject  keychain
+	executor *utiltest.MockExecutor2
 }
 
-func TestCreate(t *testing.T) {
+func TestKeychainSuite(t *testing.T) {
+	suite.Run(t, new(keychainTestSuite))
+}
+
+func (s *keychainTestSuite) BeforeTest(suiteName, testName string) {
+	s.executor = new(utiltest.MockExecutor2)
+	s.cmd = new(utiltest.MockExecutorCmd)
+	s.subject = keychain{s.executor, "/path/to/file.keychain"}
+	s.ctx, s.cancel = context.WithTimeout(context.Background(), 60*time.Second)
+}
+
+func (s *keychainTestSuite) AfterTest(suiteName, testName string) {
+	s.cancel()
+}
+
+func (s *keychainTestSuite) TestCreateShouldHandleErrors() {
+	errText := "mock error"
+
 	// setup:
-	t.Run("Should handle error", func(t *testing.T) {
-		// setup:
-		TestKeychainMain(t)
-
-		mockExec.
-			On("Exec", SecurityUtil, mock.Anything).
-			Return("", errors.New("mock error"))
-
-		// when:
-		err := subject.Create("p4ssword")
-
-		// then:
-		assert.EqualError(t, err, "mock error")
-	})
-}
-
-func TestImportCertificate(t *testing.T) {
-	t.Run("Should invoke exec API", func(t *testing.T) {
-		// setup:
-		passwd := "p4ssword"
-		filepath := "toto"
-		TestKeychainMain(t)
-
-		// Should create the keychain
-		mockExec.
-			On("Exec", SecurityUtil, []string{ActionImport,
-				filepath,
-				"-k", tmpFile.Name(),
-				"-P", passwd,
-				"-T", "/usr/bin/codesign"}).
-			Return("", nil)
-
-		// when:
-		err := subject.ImportCertificate(filepath, passwd, "")
-
-		// then:
-		assert.NoError(t, err)
-
-		// and:
-		mockExec.AssertExpectations(t)
-	})
-}
-
-func TestCreateKeyChain(t *testing.T) {
-
-	t.Run("Password should not be empty", func(t *testing.T) {
-		// setup:
-		TestKeychainMain(t)
-
-		// when:
-		err := subject.createKeychain("")
-
-		// then:
-		assert.EqualError(t, err, "Keychain password should not be empty")
-
-		// and:
-		mockExec.AssertExpectations(t)
-	})
-
-	t.Run("Should create keychain", func(t *testing.T) {
-		// setup:
-		passwd := "p4ssword"
-		TestKeychainMain(t)
-
-		// Should create the keychain
-		mockExec.
-			On("Exec", SecurityUtil, []string{ActionCreateKeychain,
-				"-p", passwd,
-				subject.filePath}).
-			Return("", nil)
-
-		// when:
-		err := subject.createKeychain(passwd)
-
-		// then:
-		assert.NoError(t, err)
-
-		// and:
-		mockExec.AssertExpectations(t)
-	})
-
-	t.Run("Should handle error", func(t *testing.T) {
-		// setup:
-		passwd := "p4ssword"
-		TestKeychainMain(t)
-
-		mockExec.
-			On("Exec", SecurityUtil, []string{ActionCreateKeychain,
-				"-p", passwd,
-				subject.filePath}).
-			Return("", errors.New("mock error"))
-
-		// when:
-		err := subject.createKeychain(passwd)
-
-		// then:
-		assert.EqualError(t, err, "mock error")
-	})
-}
-
-func TestKeyChainConfiguration(t *testing.T) {
-	// setup:
-	TestKeychainMain(t)
-
-	// Should try to configure the keychain
-	mockExec.
-		On("Exec", SecurityUtil, []string{ActionSettings, tmpFile.Name()}).
-		Return("", nil)
+	s.configureCommandOutput(
+		SecurityUtil,
+		[]string{ActionCreateKeychain, FlagPassword, "p4ssword", s.subject.GetPath()},
+		"",
+		&errText)
 
 	// when:
-	err := subject.configureKeychain()
+	err := s.subject.Create(s.ctx, "p4ssword")
 
 	// then:
-	assert.NoError(t, err)
-
-	// and:
-	mockExec.AssertExpectations(t)
+	s.Assert().EqualError(err, errText)
 }
 
-func TestSetPartitionList(t *testing.T) {
+func (s *keychainTestSuite) TestImportCertificateShouldHandleErrors() {
 	// setup:
-	password := "p4ssword"
-	identity := "identity"
+	passwd := "p4ssword"
 
-	t.Run("Should handle errors", func(t *testing.T) {
-		// setup:
-		TestKeychainMain(t)
-		mockExec.
-			On("Exec", SecurityUtil,
-				[]string{ActionSetPartitionList,
-					"-S", "apple:,apple-tool:,codesign:", // Partition ID
-					"-s", // Match signing keys
-					"-k", password,
-					"-D", identity, // Match description string
-					"-t", "private",
-					tmpFile.Name()}).
-			Return(nil, errors.New("error text"))
+	s.configureCommandOutput(
+		SecurityUtil,
+		[]string{
+			ActionImport,
+			"toto/file.p12",
+			"-k", s.subject.GetPath(),
+			"-P", passwd,
+			"-T", "/usr/bin/codesign",
+		},
+		"",
+		&errText)
 
-		// when:
-		err := subject.setPartitionList(password, identity)
+	// when:
+	err := s.subject.ImportCertificate(s.ctx, "toto/file.p12", passwd, "")
 
-		// then:
-		assert.EqualError(t, err, "error text")
-
-		// and:
-		mockExec.AssertExpectations(t)
-
-	})
-
-	t.Run("Should handle success", func(t *testing.T) {
-		// setup:
-		TestKeychainMain(t)
-		mockExec.
-			On("Exec", SecurityUtil,
-				[]string{ActionSetPartitionList,
-					"-S", "apple:,apple-tool:,codesign:", // Partition ID
-					"-s", // Match signing keys
-					"-k", password,
-					"-D", identity, // Match description string
-					"-t", "private",
-					tmpFile.Name()}).
-			Return("", nil)
-
-		// when:
-		err := subject.setPartitionList(password, identity)
-
-		// then:
-		assert.NoError(t, err)
-
-		// and:
-		mockExec.AssertExpectations(t)
-	})
+	// then:
+	s.Assert().EqualError(err, errText)
 }
 
-func TestKeyChainDelete(t *testing.T) {
-	t.Run("Success case", func(t *testing.T) {
-		// setup:
-		TestKeychainMain(t)
-		mockExec.
-			On("Exec", SecurityUtil, []string{ActionDeleteKeychain, tmpFile.Name()}).
-			Return("", nil)
+func (s *keychainTestSuite) TestKeyChainConfiguration() {
+	// setup
+	s.configureCommandOutput(
+		SecurityUtil,
+		[]string{ActionSettings, s.subject.GetPath()},
+		"",
+		&errText)
 
-		// when:
-		err := subject.Delete()
+	// when:
+	err := s.subject.configureKeychain(s.ctx)
 
-		// then:
-		assert.NoError(t, err)
-
-		// and:
-		mockExec.AssertExpectations(t)
-	})
-
-	t.Run("Error case", func(t *testing.T) {
-		// setup:
-		TestKeychainMain(t)
-		mockExec.
-			On("Exec", SecurityUtil, []string{ActionDeleteKeychain, tmpFile.Name()}).
-			Return("", errors.New("Error text"))
-
-		// when:
-		err := subject.Delete()
-
-		// then:
-		assert.EqualError(t, err, "Error text")
-
-		// and:
-		mockExec.AssertExpectations(t)
-	})
+	// then:
+	s.Assert().EqualError(err, errText)
 }
 
-func TestSetSearchList(t *testing.T) {
+func (s *keychainTestSuite) TestKeyChainCreatePasswordShouldNotBeEmpty() {
+	// when:
+	err := s.subject.createKeychain(s.ctx, "")
+
+	// then:
+	s.Assert().EqualError(err, "Keychain password should not be empty")
+}
+
+func (s *keychainTestSuite) TestSetPartitionList() {
+	// setup
+	s.configureCommandOutput(
+		SecurityUtil,
+		[]string{
+			ActionSetPartitionList,
+			FlagPartitionList, "apple:,apple-tool:,codesign:", // Partition ID
+			"-s",             // Match keys that can sign
+			"-k", "p4ssword", // Password for keychain
+			"-D", "description", // Match description string
+			"-t", "private", // We are looking for a private key
+			"/path/to/file.keychain",
+		},
+		"",
+		&errText)
+
+	// when:
+	err := s.subject.setPartitionList(s.ctx, "p4ssword", "description")
+	s.Assert().EqualError(err, errText)
+}
+
+func (s *keychainTestSuite) TestDelete() {
+	// setup
+	file := "/path/to/file.keychain"
+	s.configureCommandOutput(
+		SecurityUtil,
+		[]string{ActionDeleteKeychain, file},
+		"",
+		&errText)
+
+	// when:
+	err := s.subject.Delete(s.ctx)
+
+	// then:
+	s.Assert().EqualError(err, errText)
+}
+
+func (s *keychainTestSuite) configureCommandOutput(name string,
+	args []string,
+	result string,
+	errTxt *string) {
+
+	var err error
+	if errTxt != nil {
+		err = errors.New(*errTxt)
+	}
+
+	s.cmd.
+		On("Output").
+		Return(result, err)
+
+	s.executor.
+		On("CommandContext", s.ctx, name, args).
+		Return(s.cmd)
+}
+
+func (s *keychainTestSuite) TestGetSearchListShouldReturnValidData() {
+	// setup:
+	s.configureCommandOutput(SecurityUtil,
+		[]string{ActionListKeyChains}, `
+    "/Users/fake/Library/Keychains/login.keychain-db"
+    "/Users/fake/toto"`,
+		nil)
+
+	// when:
+	data, err := s.subject.getSearchList(s.ctx)
+
+	// then:
+	s.Assert().NoError(err)
+	s.Assert().EqualValues([]string{
+		"/Users/fake/Library/Keychains/login.keychain-db",
+		"/Users/fake/toto",
+	}, data)
+}
+
+func (s *keychainTestSuite) TestGetSearchListShouldHandleErrors() {
+	// setup:
+	s.configureCommandOutput(SecurityUtil,
+		[]string{ActionListKeyChains}, "", &errText)
+
+	// when:
+	data, err := s.subject.getSearchList(s.ctx)
+
+	// then:
+	s.Assert().EqualError(err, errText)
+	s.Assert().Empty(data)
+}
+
+func (s *keychainTestSuite) TestSetSearchList() {
+	// setup:
 	k1 := "/test/test1.keychain"
 	k2 := "/test/test2/test3.keychain"
+	list := []string{k1, k2}
 
-	t.Run("Should successfully set list", func(t *testing.T) {
-		// setup:
-		TestKeychainMain(t)
-		mockExec.
-			On("Exec", SecurityUtil, []string{ActionListKeyChains, "-s", k1, k2}).
-			Return("", nil)
+	s.configureCommandOutput(SecurityUtil,
+		[]string{ActionListKeyChains, "-s", k1, k2},
+		"",
+		&errText)
 
-		// when:
-		err := subject.setSearchList([]string{k1, k2})
+	// when:
+	err := s.subject.setSearchList(s.ctx, list)
 
-		// then:
-		assert.NoError(t, err)
-
-		// and:
-		mockExec.AssertExpectations(t)
-	})
-
-	t.Run("Should handle errors", func(t *testing.T) {
-		// setup
-		TestKeychainMain(t)
-		mockExec.
-			On("Exec", SecurityUtil, []string{ActionListKeyChains, "-s", k1, k2}).
-			Return("", errors.New("security: unknown command"))
-
-		// when:
-		err := subject.setSearchList([]string{k1, k2})
-
-		// then:
-		assert.EqualError(t, err, "security: unknown command")
-	})
+	// then:
+	s.Assert().EqualError(err, errText)
 }
-
-func TestGetSearchList(t *testing.T) {
-	t.Run("Should return valid data", func(t *testing.T) {
-		// setup:
-		TestKeychainMain(t)
-		mockExec.
-			On("Exec", SecurityUtil, []string{ActionListKeyChains}).
-			Return(`	
-	"/Users/fake/Library/Keychains/login.keychain-db"
-	"/Users/fake/toto"`, nil)
-
-		// when:
-		data, err := subject.getSearchList()
-
-		// then:
-		assert.NoError(t, err)
-		assert.ObjectsAreEqual(data, []string{
-			"/Users/fake/Library/Keychains/login.keychain-db",
-			"/Users/fake/toto",
-		})
-	})
-
-	t.Run("Should handle errors", func(t *testing.T) {
-		// setup
-		TestKeychainMain(t)
-		mockExec.
-			On("Exec", SecurityUtil, []string{ActionListKeyChains}).
-			Return(nil, errors.New("security: unknown command"))
-
-		// when:
-		data, err := subject.getSearchList()
-
-		// then:
-		assert.EqualError(t, err, "security: unknown command")
-		assert.Nil(t, data)
-	})
-}
-
-/*
-func TestImportCertificate(t *testing.T) {
-	t.Run("Certificate password should be valid", func(t *testing.T) {
-		// setup:
-		data, err := os.Open("../../assets/Certificate.p12")
-		assert.NoError(t, err)
-		assert.NotNil(t, data)
-
-		// when:
-		err = subject.ImportCertificate(data, "hello:")
-
-		// then:
-		assert.EqualError(t, err, "Invalid")
-	})
-
-	t.Run("Importation API need to be invoked", func(t *testing.T) {
-	})
-
-}
-*/

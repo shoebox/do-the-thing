@@ -1,6 +1,7 @@
 package xcode
 
 import (
+	"context"
 	"dothething/internal/util"
 	"errors"
 	"sort"
@@ -19,22 +20,22 @@ var (
 
 // SelectService The XCode version selection service interface
 type SelectService interface {
-	SelectService(version string) error
+	Find(ctx context.Context, version string) (*Install, error)
 }
 
-// XCodeSelectService The XCode version selection service struct
-type XCodeSelectService struct {
-	exec util.Exec
-	list ListService
+// selectService The XCode version selection service struct
+type selectService struct {
+	Executor util.Executor
+	list     ListService
 }
 
 // NewSelectService create a new instance of the xcode selector service
-func NewSelectService(list ListService, exec util.Exec) *XCodeSelectService {
-	return &XCodeSelectService{exec: exec, list: list}
+func NewSelectService(list ListService, exec util.Executor) SelectService {
+	return selectService{Executor: exec, list: list}
 }
 
 // Find allow to resolve a XCode install by required vesion
-func (s *XCodeSelectService) Find(requirement string) (*Install, error) {
+func (s selectService) Find(ctx context.Context, requirement string) (*Install, error) {
 	// Should try to parse the required version
 	required, err := semver.Parse(requirement)
 	if err != nil {
@@ -42,7 +43,7 @@ func (s *XCodeSelectService) Find(requirement string) (*Install, error) {
 	}
 
 	// Find a equal match
-	target, err := s.findMatch(required, s.isEqualMatch)
+	target, err := s.findMatch(ctx, required, s.isEqualMatch)
 
 	// In case of no match found
 	if target == nil || err != nil {
@@ -52,7 +53,7 @@ func (s *XCodeSelectService) Find(requirement string) (*Install, error) {
 	return target, nil
 }
 
-func (s *XCodeSelectService) isEqualMatch(install *Install, requirement semver.Version) (bool, error) {
+func (s *selectService) isEqualMatch(install *Install, requirement semver.Version) (bool, error) {
 	if v, err := semver.Parse(install.Version); err == nil {
 		if v.Equals(requirement) {
 			return true, nil
@@ -61,11 +62,13 @@ func (s *XCodeSelectService) isEqualMatch(install *Install, requirement semver.V
 	return false, nil
 }
 
-func (s *XCodeSelectService) findMatch(requirement semver.Version,
+func (s *selectService) findMatch(
+	ctx context.Context,
+	requirement semver.Version,
 	valid func(install *Install, version semver.Version) (bool, error)) (*Install, error) {
 
 	// Resolve the list of candidates
-	list, err := s.list.List()
+	list, err := s.list.List(ctx)
 	if err != nil {
 		return nil, err
 	}
