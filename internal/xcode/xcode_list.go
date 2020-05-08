@@ -40,7 +40,7 @@ type listService struct {
 	file util.FileService
 }
 
-// New create a new instance of the service
+// NewXCodeListService create a new instance of the service
 func NewXCodeListService(exec util.Executor, file util.FileService) ListService {
 	return listService{exec: exec, file: util.IoUtilFileService{}}
 }

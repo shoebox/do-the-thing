@@ -71,7 +71,7 @@ func (e XCodebuildError) Error() string {
 	var msg string
 	switch e.code {
 	case USAGE:
-		msg = "Command configuration erro"
+		msg = "Command configuration error"
 	case DATAERR:
 		msg = "The input data was incorrect in some way."
 	case NOINPUT:
@@ -114,12 +114,23 @@ func handleXcodebuildError(xerr error) error {
 		return nil
 	}
 
-	txt := xerr.Error()
+	return parseError(xerr.Error())
+}
+
+func parseError(txt string) error {
+	var index = -1
 	if errorRegExp.MatchString(txt) {
 		m := errorRegExp.FindStringSubmatch(txt)
-		if i1, err := strconv.Atoi(m[1]); err == nil {
-			return NewError(i1)
-		}
+		index = parseErrorIntIndex(m[1])
 	}
-	return NewError(-1)
+
+	return NewError(index)
+}
+
+func parseErrorIntIndex(txt string) int {
+	index, err := strconv.Atoi(txt)
+	if err != nil {
+		return -1
+	}
+	return index
 }
