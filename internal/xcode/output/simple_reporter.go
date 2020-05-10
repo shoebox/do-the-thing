@@ -1,6 +1,9 @@
 package output
 
 import (
+	"fmt"
+
+	"github.com/fatih/color"
 	"github.com/rs/zerolog/log"
 )
 
@@ -54,7 +57,8 @@ func (s simplereporter) CleanRemove(e LogEntry) {
 }
 
 func (s simplereporter) CleanTarget(e LogEntry) {
-	log.Info().
+	fmt.Printf("♻️ %v - %v\n", color.YellowString("Cleaning target"), e.Target)
+	log.Debug().
 		Str("Target", e.Target).
 		Str("Project", e.Project).
 		Msg("Cleaning target")
@@ -67,20 +71,23 @@ func (s simplereporter) CodeSign(e LogEntry) {
 }
 
 func (s simplereporter) CompileCommand(e LogEntry) {
-	log.Info().
+	fmt.Printf("▸ %v - %v\n", color.YellowString("Compiling"), e.FileName)
+	log.Debug().
 		Str("File", e.FileName).
 		Msg("Compiling")
 }
 
 func (s simplereporter) CompileStoryboard(e LogEntry) {
-	log.Info().
+	fmt.Printf("▸ %v - %v\n", color.YellowString("Compiling storyboard"), e.FileName)
+	log.Debug().
 		Str("File name", e.FileName).
 		Str("File path", e.FilePath).
 		Msg("Compiling storyboard")
 }
 
 func (s simplereporter) CompileXIB(e LogEntry) {
-	log.Info().
+	fmt.Printf("▸ %v - %v\n", color.YellowString("Compiling XIB file"), e.FileName)
+	log.Debug().
 		Str("File name", e.FileName).
 		Str("File path", e.FilePath).
 		Msg("Compiling XIB")
@@ -119,6 +126,14 @@ func (s simplereporter) Linking(e LogEntry) {
 		Msg("Linking")
 }
 
+func (s simplereporter) PhaseSucceeded(e LogEntry) {
+	fmt.Println("Phase", e.Name, "succeeded")
+}
+
+func (s simplereporter) PhaseScriptExecution(e LogEntry) {
+	fmt.Println("PhaseScriptExecution", e.Name)
+}
+
 func (s simplereporter) RunningShellCommand(e LogEntry) {
 	log.Debug().
 		Str("Command", e.Command).
@@ -126,21 +141,30 @@ func (s simplereporter) RunningShellCommand(e LogEntry) {
 		Msg("Running shell command")
 }
 
-func (s simplereporter) TestPassed(e LogEntry) {
-	log.Info().Str("Name", e.TestCase).Msg("✅ Test Pass")
+func (s simplereporter) TestCasePassed(e LogEntry) {
+	fmt.Printf("✔️ %v - %v\n", color.GreenString("Test case passed"), e.TestCase)
+}
+
+func (s simplereporter) TestCasePending(e LogEntry) {
+	fmt.Printf("⏳ %v - %v\n", color.YellowString("Test case pending"), e.TestCase)
+}
+
+func (s simplereporter) TestCaseStarted(e LogEntry) {
+	fmt.Printf("⏳ %v - %v\n", color.YellowString("Test case starting"), e.TestCase)
+}
+
+func (s simplereporter) TestCaseMeasured(e LogEntry) {
 }
 
 func (s simplereporter) TestFailing(e LogEntry) {
-	log.Warn().Str("Name", e.TestCase).Msg("❌ Test failed")
-	log.Debug().
-		Str("FilePath", e.FilePath).
-		Str("Test suite", e.TestSuite).
-		Str("Test case", e.TestCase).
-		Str("Reason", e.TestFailureReason).
-		Msg("Failing test")
+	fmt.Printf("✖️ %v - %v\n", color.RedString("Test failed"), e.FileName)
 }
 
-func (s simplereporter) TestSuiteStart(e LogEntry) {
+func (s simplereporter) TestSuiteStarted(e LogEntry) {
+	fmt.Printf("✖️ %v - %v\n", color.RedString("Test suite started"), e.TestSuite)
+}
+
+func (s simplereporter) TestSuiteComplete(e LogEntry) {
 	log.Debug().
 		Str("Name", e.TestSuite).
 		Msg("Test suite started")

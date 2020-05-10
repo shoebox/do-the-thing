@@ -109,7 +109,7 @@ func (e XCodebuildError) Error() string {
 
 var errorRegExp = regexp.MustCompile(`^exit\sstatus\s(?P<Code>[0-9]+)`)
 
-func handleXcodebuildError(xerr error) error {
+func ParseXCodeBuildError(xerr error) error {
 	if xerr == nil {
 		return nil
 	}

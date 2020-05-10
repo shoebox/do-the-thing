@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 )
 
@@ -20,5 +21,6 @@ func NewExecutor() Executor {
 
 // CommandContext run a command with context
 func (executor *executor) CommandContext(ctx context.Context, cmd string, args ...string) Cmd {
+	fmt.Println(cmd, args)
 	return (*cmdWrapper)(exec.CommandContext(ctx, cmd, args...))
 }

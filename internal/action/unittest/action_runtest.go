@@ -7,9 +7,9 @@ import (
 	"dothething/internal/xcode"
 	"dothething/internal/xcode/output"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/rs/zerolog/log"
 )
@@ -28,7 +28,7 @@ type ActionRunTest interface {
 }
 
 type actionRunTest struct {
-	exec  util.Exec
+	exec  util.Executor
 	xcode xcode.XCodeBuildService
 }
 
@@ -38,7 +38,7 @@ type failedTest struct {
 	target string
 }
 
-func NewActionRun(service xcode.XCodeBuildService, exec util.Exec) ActionRunTest {
+func NewActionRun(service xcode.XCodeBuildService, exec util.Executor) ActionRunTest {
 	return actionRunTest{xcode: service, exec: exec}
 }
 
@@ -47,13 +47,12 @@ func (a actionRunTest) Run(ctx context.Context, dest string) error {
 	path := tempFileName("dothething", ".xcresult")
 
 	// Run test via xcodebuild
-	res, err := a.runXCodebuildTest(ctx, path, dest)
+	_, err := a.runXCodebuildTest(ctx, path, dest)
 	if err != nil {
-		return err
+		return xcode.ParseXCodeBuildError(err)
 	}
-	// fmt.Println(res)
 
-	output.Parse(strings.NewReader(res))
+	// output.Parse(strings.NewReader(res))
 	/*
 		// TODO: Handle xcodebuild result
 
@@ -85,28 +84,51 @@ func (a actionRunTest) runXCodebuildTest(ctx context.Context, path string, dest 
 		Str("Output file", path).
 		Msg("Running tests on destination")
 
-		/*
-			a.xcode.RunAction(ctx,
-				"clean",
-				xcode.ActionTest,
-				xcode.FlagScheme, "test",
-				xcode.FlagDestination, fmt.Sprintf("id=%s", dest),
-				xcode.FlagResultBundlePath, path,
-				"-parallel-testing-enabled",
-				fmt.Sprintf("-maximum-parallel-testing-worker=%v", runtime.NumCPU()),
-				"-showBuildTimingSummary")
-		*/
+	cmd := a.exec.CommandContext(ctx,
+		xcode.XCodeBuild,
+		a.xcode.GetArg(),
+		a.xcode.GetProjectPath(),
+		xcode.ActionClean,
+		xcode.ActionTest,
+		xcode.FlagScheme, "test",
+		xcode.FlagDestination, fmt.Sprintf("id=%s", dest),
+		xcode.FlagResultBundlePath, path,
+		"-showBuildTimingSummary")
+
+	pout, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", err
+	}
+
+	perr, err := cmd.StderrPipe()
+	if err != nil {
+		return "", err
+	}
+
+	go func() {
+		output.Parse(pout)
+		output.Parse(perr)
+	}()
+
+	//
+	if err = cmd.Start(); err != nil {
+		return "", err
+	}
+
+	if err = cmd.Wait(); err != nil {
+		return "", err
+	}
 
 	return "", nil
 }
 
 func (a actionRunTest) decodeXCResultFile(ctx context.Context, path string) ([]byte, error) {
-	return a.exec.ContextExec(ctx,
+	return a.exec.CommandContext(ctx,
 		xCRun, resultTool,
 		actionGet,
 		flagFormat, formatJson,
 		flagPath, path,
-	)
+	).Output()
 }
 
 // TempFileName generates a temporary filename for use in testing or whatever

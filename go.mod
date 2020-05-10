@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/briandowns/spinner v1.10.0
+	github.com/fatih/color v1.7.0
 	github.com/fatih/structs v1.1.0
 	github.com/mitchellh/mapstructure v1.2.2
 	github.com/rs/zerolog v1.18.0
