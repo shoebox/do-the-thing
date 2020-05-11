@@ -34,18 +34,18 @@ func main() {
 	dest := destination.NewDestinationService(xcodeService, executor)
 
 	//
-	dd, err := dest.List(ctx, "SwiftstraintsTests")
+	dd, err := dest.List(ctx, "Swiftstraints iOS")
 	fmt.Println(err)
 	fmt.Println(dd)
 
-	dest.Boot(ctx, dd[0])
+	dest.Boot(ctx, dd[len(dd)-1])
 
 	//
 	a := unittest.NewActionRun(xcodeService, executor)
 	err = a.Run(ctx, dd[0].Id)
 	fmt.Println(err)
 
-	defer dest.ShutDown(ctx, dd[0])
+	defer dest.ShutDown(ctx, dd[len(dd)-1])
 
 	/*
 		// # find the id that points to the location of the encoded file in the .xcresult bundle

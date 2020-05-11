@@ -8,6 +8,7 @@ type LogEntry struct {
 	Command           string
 	Count             string
 	Configuration     string
+	Error             string
 	FileName          string
 	FilePath          string
 	Name              string

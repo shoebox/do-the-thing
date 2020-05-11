@@ -25,6 +25,7 @@ func Parse(r io.Reader) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		txt := scanner.Text()
+		//fmt.Println(txt)
 		for _, matcher := range matchers {
 			b, m := matcher.Match(txt)
 			if b {

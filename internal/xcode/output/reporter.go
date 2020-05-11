@@ -29,4 +29,13 @@ type reporter interface {
 	TestSuiteComplete(e LogEntry)
 	TillUtif(e LogEntry)
 	Touch(e LogEntry)
+
+	ErrorCompile(e LogEntry)
+	ErrorCodeSign(e LogEntry)
+	ErrorClang(e LogEntry)
+	ErrorFatal(e LogEntry)
+	ErrorSignature(e LogEntry)
+	ErrorMissing(e LogEntry)
+	ErrorLD(e LogEntry)
+	ErrorUndefinedSymbol(e LogEntry)
 }

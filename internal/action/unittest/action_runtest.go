@@ -90,10 +90,11 @@ func (a actionRunTest) runXCodebuildTest(ctx context.Context, path string, dest 
 		a.xcode.GetProjectPath(),
 		xcode.ActionClean,
 		xcode.ActionTest,
-		xcode.FlagScheme, "test",
+		xcode.FlagScheme, "Swiftstraints iOS",
 		xcode.FlagDestination, fmt.Sprintf("id=%s", dest),
 		xcode.FlagResultBundlePath, path,
-		"-showBuildTimingSummary")
+		"-showBuildTimingSummary",
+		"CODE_SIGNING_ALLOWED=NO")
 
 	pout, err := cmd.StdoutPipe()
 	if err != nil {

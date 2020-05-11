@@ -17,6 +17,33 @@ func (s simplereporter) BuildTimeSummary(e LogEntry) {
 		Msg("BuildTimeSummary")
 }
 
+func (s simplereporter) ErrorCompile(e LogEntry) {
+	fmt.Printf("%v - Compiling %v %v\n", color.RedString("✗ ERROR"), e.FileName, e.Error)
+}
+
+func (s simplereporter) ErrorCodeSign(e LogEntry) {
+	fmt.Printf("%v - Signing %v\n", color.RedString("✗ ERROR"), e.Error)
+}
+
+func (s simplereporter) ErrorClang(e LogEntry) {
+}
+
+func (s simplereporter) ErrorFatal(e LogEntry) {
+	fmt.Printf("%v - %v", color.RedString("ERROR"), e.Error)
+}
+
+func (s simplereporter) ErrorSignature(e LogEntry) {
+}
+
+func (s simplereporter) ErrorMissing(e LogEntry) {
+}
+
+func (s simplereporter) ErrorLD(e LogEntry) {
+}
+
+func (s simplereporter) ErrorUndefinedSymbol(e LogEntry) {
+}
+
 func (s simplereporter) FormatAnalyze(e LogEntry) {
 	log.Debug().
 		Str("Path", e.Path).
@@ -71,14 +98,11 @@ func (s simplereporter) CodeSign(e LogEntry) {
 }
 
 func (s simplereporter) CompileCommand(e LogEntry) {
-	fmt.Printf("▸ %v - %v\n", color.YellowString("Compiling"), e.FileName)
-	log.Debug().
-		Str("File", e.FileName).
-		Msg("Compiling")
+	fmt.Printf("%v %v %v\n", color.YellowString("▸ COMPILING"), "", e.FileName)
 }
 
 func (s simplereporter) CompileStoryboard(e LogEntry) {
-	fmt.Printf("▸ %v - %v\n", color.YellowString("Compiling storyboard"), e.FileName)
+	fmt.Printf("%v %v %v\n", color.YellowString("▸ COMPILING"), "storyboard", e.FileName)
 	log.Debug().
 		Str("File name", e.FileName).
 		Str("File path", e.FilePath).
@@ -86,11 +110,7 @@ func (s simplereporter) CompileStoryboard(e LogEntry) {
 }
 
 func (s simplereporter) CompileXIB(e LogEntry) {
-	fmt.Printf("▸ %v - %v\n", color.YellowString("Compiling XIB file"), e.FileName)
-	log.Debug().
-		Str("File name", e.FileName).
-		Str("File path", e.FilePath).
-		Msg("Compiling XIB")
+	fmt.Printf("%v %v %v\n", color.YellowString("▸ COMPILING"), "xib", e.FileName)
 }
 
 func (s simplereporter) CopyHeader(e LogEntry) {
@@ -127,7 +147,7 @@ func (s simplereporter) Linking(e LogEntry) {
 }
 
 func (s simplereporter) PhaseSucceeded(e LogEntry) {
-	fmt.Println("Phase", e.Name, "succeeded")
+	color.New(color.FgHiBlue).Add(color.Bold).Printf("PHASE '%v' COMPLETED\n", e.Name)
 }
 
 func (s simplereporter) PhaseScriptExecution(e LogEntry) {
@@ -142,15 +162,17 @@ func (s simplereporter) RunningShellCommand(e LogEntry) {
 }
 
 func (s simplereporter) TestCasePassed(e LogEntry) {
-	fmt.Printf("✔️ %v - %v\n", color.GreenString("Test case passed"), e.TestCase)
+	fmt.Printf("%v Test case - %v (%vs)\n",
+		color.GreenString("✔️ PASSED"),
+		e.TestCase,
+		e.Time)
 }
 
 func (s simplereporter) TestCasePending(e LogEntry) {
-	fmt.Printf("⏳ %v - %v\n", color.YellowString("Test case pending"), e.TestCase)
+	fmt.Printf("⏳ Test case %v - %v\n", color.GreenString("PENDING"), e.TestCase)
 }
 
 func (s simplereporter) TestCaseStarted(e LogEntry) {
-	fmt.Printf("⏳ %v - %v\n", color.YellowString("Test case starting"), e.TestCase)
 }
 
 func (s simplereporter) TestCaseMeasured(e LogEntry) {
