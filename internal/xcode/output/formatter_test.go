@@ -190,11 +190,12 @@ func TestParse(t *testing.T) {
 	}{
 		{
 			m: "BuildTimeSummary",
-			d: "CompileStoryboard (29 tasks) | 87.128 seconds",
+			d: "CompileSwiftSources (12 task) | 13.774 seconds",
 			e: LogEntry{
-				Name:  "CompileStoryboard",
-				Count: "29",
-				Time:  "87.128",
+				Name:  "CompileSwiftSources",
+				Count: "12",
+				Time:  "13.774",
+				Unit:  "seconds",
 			},
 		},
 		{

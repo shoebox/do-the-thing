@@ -2,7 +2,7 @@ package output
 
 func NewMatcher(reporter reporter) []matcherEntry {
 	return []matcherEntry{
-		createMatcherEntry(reporter.BuildTimeSummary, `^(?P<Name>.*)\s\|\s(?P<Time>[0-9.]+)\s(?P<Unit>\w+)$`),
+		createMatcherEntry(reporter.BuildTimeSummary, `^(?P<Name>(\w+))\s\((?P<Count>\d+)\stask\)\s\|\s(?P<Time>[\d.]+)\s(?P<Unit>\w+)$`),
 		createMatcherEntry(reporter.CleanTarget, `(?i)^=== Clean Target\s(?P<Target>.*)\sOf Project\s(?P<Project>.*)\sWith Configuration\s(?P<Configuration>.*)\s===`),
 		createMatcherEntry(reporter.CodeSign, `^CodeSign\s(?P<FilePath>(?:\\ |[^ ])*)$`),
 		createMatcherEntry(reporter.CodeSign, `^CodeSign\s(?P<FilePath>(?:\\ |[^ ])*.framework)\/Versions`),
