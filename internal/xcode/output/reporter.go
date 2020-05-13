@@ -2,7 +2,9 @@ package output
 
 type reporter interface {
 	BuildTimeSummary(e LogEntry)
+	BuildAggregate(e LogEntry)
 	CompileCommand(e LogEntry)
+	CompileClang(e LogEntry)
 	FormatAnalyze(e LogEntry)
 	FormatAnalyzeTarget(e LogEntry)
 	FormatAggregateTarget(e LogEntry)
@@ -22,12 +24,9 @@ type reporter interface {
 	PhaseScriptExecution(e LogEntry)
 	RunningShellCommand(e LogEntry)
 	TestFailing(e LogEntry)
-	TestCasePassed(e LogEntry)
-	TestCasePending(e LogEntry)
+	TestCase(e LogEntry)
 	TestCaseMeasured(e LogEntry)
-	TestCaseStarted(e LogEntry)
-	TestSuiteComplete(e LogEntry)
-	TillUtif(e LogEntry)
+	TestSuiteStatus(e LogEntry)
 	Touch(e LogEntry)
 
 	ErrorCompile(e LogEntry)

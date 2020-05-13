@@ -1,13 +1,14 @@
 package output
 
 type LogEntry struct {
-	Entry             matcherEntry
 	Arg               string
+	AverageTime       string
 	BuildArch         string
 	BuildVariant      string
 	Command           string
-	Count             string
 	Configuration     string
+	Count             string
+	Entry             matcherEntry
 	Error             string
 	FileName          string
 	FilePath          string
@@ -15,10 +16,13 @@ type LogEntry struct {
 	Path              string
 	Project           string
 	SourceFile        string
+	Status            string
 	Target            string
 	TargetFile        string
 	TestCase          string
 	TestFailureReason string
 	TestSuite         string
+	TimeStamp         string
 	Time              string
+	Unit              string
 }

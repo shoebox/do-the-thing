@@ -7,51 +7,54 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type simplereporter struct {
+type SimpleReporter struct {
 }
 
-func (s simplereporter) BuildTimeSummary(e LogEntry) {
+func (s SimpleReporter) BuildAggregate(e LogEntry) {
+}
+
+func (s SimpleReporter) BuildTimeSummary(e LogEntry) {
 	log.Debug().
 		Str("Name", e.Name).
 		Str("Task(s) count", e.Count).
 		Msg("BuildTimeSummary")
 }
 
-func (s simplereporter) ErrorCompile(e LogEntry) {
+func (s SimpleReporter) ErrorCompile(e LogEntry) {
 	fmt.Printf("%v - Compiling %v %v\n", color.RedString("✗ ERROR"), e.FileName, e.Error)
 }
 
-func (s simplereporter) ErrorCodeSign(e LogEntry) {
+func (s SimpleReporter) ErrorCodeSign(e LogEntry) {
 	fmt.Printf("%v - Signing %v\n", color.RedString("✗ ERROR"), e.Error)
 }
 
-func (s simplereporter) ErrorClang(e LogEntry) {
+func (s SimpleReporter) ErrorClang(e LogEntry) {
 }
 
-func (s simplereporter) ErrorFatal(e LogEntry) {
+func (s SimpleReporter) ErrorFatal(e LogEntry) {
 	fmt.Printf("%v - %v", color.RedString("ERROR"), e.Error)
 }
 
-func (s simplereporter) ErrorSignature(e LogEntry) {
+func (s SimpleReporter) ErrorSignature(e LogEntry) {
 }
 
-func (s simplereporter) ErrorMissing(e LogEntry) {
+func (s SimpleReporter) ErrorMissing(e LogEntry) {
 }
 
-func (s simplereporter) ErrorLD(e LogEntry) {
+func (s SimpleReporter) ErrorLD(e LogEntry) {
 }
 
-func (s simplereporter) ErrorUndefinedSymbol(e LogEntry) {
+func (s SimpleReporter) ErrorUndefinedSymbol(e LogEntry) {
 }
 
-func (s simplereporter) FormatAnalyze(e LogEntry) {
+func (s SimpleReporter) FormatAnalyze(e LogEntry) {
 	log.Debug().
 		Str("Path", e.Path).
 		Str("FileName", e.FileName).
 		Msg("Analyze")
 }
 
-func (s simplereporter) FormatAnalyzeTarget(e LogEntry) {
+func (s SimpleReporter) FormatAnalyzeTarget(e LogEntry) {
 	log.Debug().
 		Str("Configuration", e.Configuration).
 		Str("Target", e.Target).
@@ -59,7 +62,7 @@ func (s simplereporter) FormatAnalyzeTarget(e LogEntry) {
 		Msg("Analyze")
 }
 
-func (s simplereporter) FormatAggregateTarget(e LogEntry) {
+func (s SimpleReporter) FormatAggregateTarget(e LogEntry) {
 	log.Debug().
 		Str("Configuration", e.Configuration).
 		Str("Target", e.Target).
@@ -67,7 +70,7 @@ func (s simplereporter) FormatAggregateTarget(e LogEntry) {
 		Msg("Aggregate")
 }
 
-func (s simplereporter) FormatBuildTarget(e LogEntry) {
+func (s SimpleReporter) FormatBuildTarget(e LogEntry) {
 	log.Debug().
 		Str("Configuration", e.Configuration).
 		Str("Target", e.Target).
@@ -75,15 +78,15 @@ func (s simplereporter) FormatBuildTarget(e LogEntry) {
 		Msg("Building")
 }
 
-func (s simplereporter) FormatCheckDependencies(e LogEntry) {
+func (s SimpleReporter) FormatCheckDependencies(e LogEntry) {
 	log.Debug().Msg("Checking dependencies")
 }
 
-func (s simplereporter) CleanRemove(e LogEntry) {
+func (s SimpleReporter) CleanRemove(e LogEntry) {
 	log.Debug().Msg("Cleaning")
 }
 
-func (s simplereporter) CleanTarget(e LogEntry) {
+func (s SimpleReporter) CleanTarget(e LogEntry) {
 	fmt.Printf("♻️ %v - %v\n", color.YellowString("Cleaning target"), e.Target)
 	log.Debug().
 		Str("Target", e.Target).
@@ -91,17 +94,19 @@ func (s simplereporter) CleanTarget(e LogEntry) {
 		Msg("Cleaning target")
 }
 
-func (s simplereporter) CodeSign(e LogEntry) {
+func (s SimpleReporter) CodeSign(e LogEntry) {
 	log.Info().
 		Str("File path", e.FilePath).
 		Msg("Signin")
 }
+func (s SimpleReporter) CompileClang(e LogEntry) {
+}
 
-func (s simplereporter) CompileCommand(e LogEntry) {
+func (s SimpleReporter) CompileCommand(e LogEntry) {
 	fmt.Printf("%v %v %v\n", color.YellowString("▸ COMPILING"), "", e.FileName)
 }
 
-func (s simplereporter) CompileStoryboard(e LogEntry) {
+func (s SimpleReporter) CompileStoryboard(e LogEntry) {
 	fmt.Printf("%v %v %v\n", color.YellowString("▸ COMPILING"), "storyboard", e.FileName)
 	log.Debug().
 		Str("File name", e.FileName).
@@ -109,36 +114,36 @@ func (s simplereporter) CompileStoryboard(e LogEntry) {
 		Msg("Compiling storyboard")
 }
 
-func (s simplereporter) CompileXIB(e LogEntry) {
+func (s SimpleReporter) CompileXIB(e LogEntry) {
 	fmt.Printf("%v %v %v\n", color.YellowString("▸ COMPILING"), "xib", e.FileName)
 }
 
-func (s simplereporter) CopyHeader(e LogEntry) {
+func (s SimpleReporter) CopyHeader(e LogEntry) {
 	log.Debug().
 		Str("Source", e.SourceFile).
 		Str("Target", e.TargetFile).
 		Msg("Copying")
 }
 
-func (s simplereporter) Copy(e LogEntry) {
+func (s SimpleReporter) Copy(e LogEntry) {
 	log.Debug().
 		Str("Res", e.Arg).
 		Msg("Copying")
 }
 
-func (s simplereporter) GenerateDSym(e LogEntry) {
+func (s SimpleReporter) GenerateDSym(e LogEntry) {
 	log.Debug().
 		Str("File", e.FileName).
 		Msg("Generating DSYM")
 }
 
-func (s simplereporter) LibTool(e LogEntry) {
+func (s SimpleReporter) LibTool(e LogEntry) {
 	log.Debug().
 		Str("File", e.FileName).
 		Msg("Building library")
 }
 
-func (s simplereporter) Linking(e LogEntry) {
+func (s SimpleReporter) Linking(e LogEntry) {
 	log.Debug().
 		Str("Architecture", e.BuildArch).
 		Str("Build variant", e.BuildVariant).
@@ -146,66 +151,55 @@ func (s simplereporter) Linking(e LogEntry) {
 		Msg("Linking")
 }
 
-func (s simplereporter) PhaseSucceeded(e LogEntry) {
+func (s SimpleReporter) PhaseSucceeded(e LogEntry) {
 	color.New(color.FgHiBlue).Add(color.Bold).Printf("PHASE '%v' COMPLETED\n", e.Name)
 }
 
-func (s simplereporter) PhaseScriptExecution(e LogEntry) {
+func (s SimpleReporter) PhaseScriptExecution(e LogEntry) {
 	fmt.Println("PhaseScriptExecution", e.Name)
 }
 
-func (s simplereporter) RunningShellCommand(e LogEntry) {
+func (s SimpleReporter) RunningShellCommand(e LogEntry) {
 	log.Debug().
 		Str("Command", e.Command).
 		Str("Arg", e.Arg).
 		Msg("Running shell command")
 }
 
-func (s simplereporter) TestCasePassed(e LogEntry) {
+func (s SimpleReporter) TestCasePassed(e LogEntry) {
 	fmt.Printf("%v Test case - %v (%vs)\n",
 		color.GreenString("✔️ PASSED"),
 		e.TestCase,
 		e.Time)
 }
 
-func (s simplereporter) TestCasePending(e LogEntry) {
-	fmt.Printf("⏳ Test case %v - %v\n", color.GreenString("PENDING"), e.TestCase)
+func (s SimpleReporter) TestCase(e LogEntry) {
+	fmt.Printf("Test case %v - %v\n", e.Status, e.TestCase)
 }
 
-func (s simplereporter) TestCaseStarted(e LogEntry) {
+func (s SimpleReporter) TestCaseMeasured(e LogEntry) {
 }
 
-func (s simplereporter) TestCaseMeasured(e LogEntry) {
-}
-
-func (s simplereporter) TestFailing(e LogEntry) {
+func (s SimpleReporter) TestFailing(e LogEntry) {
 	fmt.Printf("✖️ %v - %v\n", color.RedString("Test failed"), e.FileName)
 }
 
-func (s simplereporter) TestSuiteStarted(e LogEntry) {
-	fmt.Printf("✖️ %v - %v\n", color.RedString("Test suite started"), e.TestSuite)
+func (s SimpleReporter) TestSuiteStatus(e LogEntry) {
+	if e.Status == "failed" {
+		fmt.Printf("✖️ %v - %v\n", color.RedString("Test suite failed"), e.TestSuite)
+	} else {
+		fmt.Printf("⏳ Test suite %v - %v\n", e.Status, e.TestSuite)
+	}
 }
 
-func (s simplereporter) TestSuiteComplete(e LogEntry) {
-	log.Debug().
-		Str("Name", e.TestSuite).
-		Msg("Test suite started")
-}
-
-func (s simplereporter) TillUtif(e LogEntry) {
-	log.Debug().
-		Str("fileName", e.FileName).
-		Msg("Validating")
-}
-
-func (s simplereporter) Touch(e LogEntry) {
+func (s SimpleReporter) Touch(e LogEntry) {
 	// panic("implement me")
 }
 
-func (s simplereporter) WriteAuxiliaryFiles() {
+func (s SimpleReporter) WriteAuxiliaryFiles() {
 	panic("implement me")
 }
 
-func (s simplereporter) WriteFiles() {
+func (s SimpleReporter) WriteFiles() {
 	panic("implement me")
 }

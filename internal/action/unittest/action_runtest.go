@@ -107,8 +107,9 @@ func (a actionRunTest) runXCodebuildTest(ctx context.Context, path string, dest 
 	}
 
 	go func() {
-		output.Parse(pout)
-		output.Parse(perr)
+		f := output.NewFormatter(output.SimpleReporter{})
+		f.Parse(pout)
+		f.Parse(perr)
 	}()
 
 	//

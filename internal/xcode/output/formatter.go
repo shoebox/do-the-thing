@@ -8,7 +8,13 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-var matchers = NewMatcher(simplereporter{})
+type formatter struct {
+	m []matcherEntry
+}
+
+func NewFormatter(r reporter) formatter {
+	return formatter{m: NewMatcher(r)}
+}
 
 func FillStruct(data map[string]string, result interface{}) {
 	t := reflect.ValueOf(result).Elem()
@@ -20,13 +26,12 @@ func FillStruct(data map[string]string, result interface{}) {
 	}
 }
 
-func Parse(r io.Reader) {
+func (f formatter) Parse(r io.Reader) {
 	entry := LogEntry{}
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		txt := scanner.Text()
-		//fmt.Println(txt)
-		for _, matcher := range matchers {
+		for _, matcher := range f.m {
 			b, m := matcher.Match(txt)
 			if b {
 				mapstructure.Decode(m, &entry)
