@@ -4,6 +4,7 @@ import (
 	"context"
 	"dothething/internal/action/unittest"
 	"dothething/internal/destination"
+	"dothething/internal/keychain"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
 	"fmt"
@@ -24,77 +25,96 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
+	//
 	path := "/Users/johann.martinache/Desktop/tmp/Swiftstraints/Swiftstraints.xcodeproj"
 
-	executor := util.NewExecutor()
-	xcodeService := xcode.NewService(executor, path)
+	f := util.IoUtilFileService{}
+	e := util.NewExecutor()
+	xcodeService := xcode.NewService(e, path)
 
-	// pj := xcode.NewProjectService(xcodeService)
-
-	dest := destination.NewDestinationService(xcodeService, executor)
-
-	//
-	dd, err := dest.List(ctx, "Swiftstraints iOS")
-	fmt.Println(err)
-	fmt.Println(dd)
-
-	dest.Boot(ctx, dd[len(dd)-1])
+	// List service
+	listService := xcode.NewXCodeListService(e, f)
+	list, err := listService.List(ctx)
+	fmt.Println("Xcode list :::", list, err)
 
 	//
-	a := unittest.NewActionRun(xcodeService, executor)
-	err = a.Run(ctx, dd[0].Id)
-	fmt.Println(err)
+	if err := selectService(e, listService); err != nil {
+		log.Error().AnErr("Error", err).Msg("Select service error")
+	}
 
-	defer dest.ShutDown(ctx, dd[len(dd)-1])
+	//
+	if err := unitTest(e, xcodeService); err != nil {
+		log.Error().AnErr("Error", err).Msg("Unit test error")
+	}
 
+	if err := keychainTest(e); err != nil {
+		log.Error().AnErr("Error", err).Msg("Keychain error")
+	}
 	/*
 		// # find the id that points to the location of the encoded file in the .xcresult bundle
 		// id=$(xcrun xcresulttool get --format json --path Tests.xcresult | jq '.actions._values[]' | jq -r '.actionResult.logRef.id._value')
 		// # export the log found at the the id in the .xcresult bundle
 		// xcrun xcresulttool export --path Tests.xcresult --id $id --output-path TestsStdErrorStdout.log --type file
 	*/
+}
 
-	// p, err := pj.Parse()
-	// fmt.Println(p, err)
+func selectService(e util.Executor, l xcode.ListService) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	// dd, err := pj.ListDestinations("test")
-	// fmt.Println(dd, err)
+	selectService := xcode.NewSelectService(l, e)
+	res, err := selectService.Find(ctx, "11.3.1")
+	if err != nil {
+		return err
+	}
 
-	/*
-		k, err := keychain.NewKeyChain(executor)
-		fmt.Println(k, err)
+	fmt.Println("XCode instance : ", res, err)
+	return nil
+}
 
-		err = k.Create(ctx, "password")
-		if err != nil {
-			fmt.Println(err)
-		}
+func unitTest(e util.Executor, x xcode.XCodeBuildService) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-		err = k.ImportCertificate(ctx, "assets/Certificate.p12", "p4ssword", "123")
-		if err != nil {
-			fmt.Println(err)
-		}
-	*/
+	dest := destination.NewDestinationService(x, e)
+	dd, err := dest.List(ctx, "Swiftstraints iOS")
+	if err != nil {
+		return err
+	}
+	defer dest.ShutDown(ctx, dd[len(dd)-1])
 
-	/*
-		// defer k.Delete()
+	if err := dest.Boot(ctx, dd[len(dd)-1]); err != nil {
+		return err
+	}
 
-		// f, err := k.Create()
-		// fmt.Println(f.Name(), err)
-	*/
+	a := unittest.NewActionRun(x, e)
+	return a.Run(ctx, dd[0].Id)
+}
 
-	/*
-		fus := util.IoUtilFileService{}
+func keychainTest(e util.Executor) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-		listService := xcode.NewXCodeListService(executor, fus)
-		list, err := listService.List(ctx)
-		fmt.Println(list, err)
-		for _, v := range list {
-			fmt.Println(v)
-		}
+	// Keychain service
+	k, err := keychain.NewKeyChain(e)
+	if err != nil {
+		return err
+	}
 
-		selectService := xcode.NewSelectService(listService, executor)
+	// Delete it at the end
+	defer k.Delete(ctx)
 
-		res, err := selectService.Find(ctx, "11.3.1")
-		fmt.Println(res, err)
-	*/
+	// Create the new keychain
+	err = k.Create(ctx, "password")
+	if err != nil {
+		return err
+	}
+
+	// Import the certificate
+	err = k.ImportCertificate(ctx, "assets/Certificate.p12", "p4ssword", "123")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
