@@ -3,7 +3,6 @@ package output
 import (
 	"bufio"
 	"io"
-	"reflect"
 
 	"github.com/mitchellh/mapstructure"
 )
@@ -14,16 +13,6 @@ type formatter struct {
 
 func NewFormatter(r reporter) formatter {
 	return formatter{m: NewMatcher(r)}
-}
-
-func FillStruct(data map[string]string, result interface{}) {
-	t := reflect.ValueOf(result).Elem()
-	for k, v := range data {
-		val := t.FieldByName(k)
-		if val.CanSet() {
-			val.Set(reflect.ValueOf(v))
-		}
-	}
 }
 
 func (f formatter) Parse(r io.Reader) {
