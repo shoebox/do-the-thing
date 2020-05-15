@@ -18,7 +18,7 @@ import (
 type selectSuite struct {
 	suite.Suite
 	listContext     context.Context
-	mockExec        *utiltest.MockExecutor2
+	mockExec        *utiltest.MockExecutor
 	mockFileService *utiltest.MockFileService
 	subject         selectService
 	listService     *mockListService
@@ -40,7 +40,7 @@ func TestXCodeSelectSuite(t *testing.T) {
 }
 
 func (s *selectSuite) SetupTest() {
-	s.mockExec = new(utiltest.MockExecutor2)
+	s.mockExec = new(utiltest.MockExecutor)
 	s.listContext = context.Background()
 	s.mockFileService = new(utiltest.MockFileService)
 	s.listService = new(mockListService)

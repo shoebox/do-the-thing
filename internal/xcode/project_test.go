@@ -43,7 +43,7 @@ const fakePath = "/path/to/project.xcodeproj"
 type projectTestSuite struct {
 	suite.Suite
 	ctx     context.Context
-	exec    *utiltest.MockExecutor2
+	exec    *utiltest.MockExecutor
 	subject projectService
 }
 
@@ -55,7 +55,7 @@ func TestProjectSuite(t *testing.T) {
 
 func (s *projectTestSuite) SetupTest() {
 	s.ctx = context.Background()
-	s.exec = new(utiltest.MockExecutor2)
+	s.exec = new(utiltest.MockExecutor)
 	s.subject = projectService{xcodeService: NewService(s.exec, fakePath)}
 }
 

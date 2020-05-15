@@ -17,7 +17,7 @@ type XCodebuildSuite struct {
 	ctx      context.Context
 	cancel   context.CancelFunc
 	subject  XCodeBuildService
-	executor *utiltest.MockExecutor2
+	executor *utiltest.MockExecutor
 	path     string
 }
 
@@ -26,7 +26,7 @@ func TestXCodebuildSuite(t *testing.T) {
 }
 
 func (s *XCodebuildSuite) BeforeTest(suiteName, testName string) {
-	s.executor = new(utiltest.MockExecutor2)
+	s.executor = new(utiltest.MockExecutor)
 	s.path = "/path/to/project.xcworkspace"
 	s.subject = NewService(s.executor, s.path)
 	s.cmd = new(utiltest.MockExecutorCmd)

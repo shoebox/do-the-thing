@@ -131,11 +131,11 @@ const invalidProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
 const validPath = "/path/to/file.provisioning"
 const invalidPath = "/path/to/file2.provisioning"
 
-var mockExec *utiltest.MockExecutor2
+var mockExec *utiltest.MockExecutor
 var subject provisioningService
 
 func TestMain(m *testing.M) {
-	mockExec = new(utiltest.MockExecutor2)
+	mockExec = new(utiltest.MockExecutor)
 	subject = provisioningService{mockExec}
 
 	mockExec.MockCommandContext(Security,

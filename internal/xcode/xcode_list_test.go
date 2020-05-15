@@ -22,7 +22,7 @@ type XCodeListTestSuite struct {
 	suite.Suite
 	ctx             context.Context
 	cmd             *utiltest.MockExecutorCmd
-	mockExec        *utiltest.MockExecutor2
+	mockExec        *utiltest.MockExecutor
 	mockFileService *utiltest.MockFileService
 	service         listService
 }
@@ -31,7 +31,7 @@ func (s *XCodeListTestSuite) SetupTest() {
 	utiltest.SetupMockExec()
 	s.cmd = new(utiltest.MockExecutorCmd)
 	s.ctx = context.Background()
-	s.mockExec = new(utiltest.MockExecutor2)
+	s.mockExec = new(utiltest.MockExecutor)
 	s.mockFileService = new(utiltest.MockFileService)
 	s.service = listService{exec: s.mockExec, file: s.mockFileService}
 }

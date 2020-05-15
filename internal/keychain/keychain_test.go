@@ -18,7 +18,7 @@ type keychainTestSuite struct {
 	cmd    *utiltest.MockExecutorCmd
 	suite.Suite
 	subject  keychain
-	executor *utiltest.MockExecutor2
+	executor *utiltest.MockExecutor
 }
 
 func TestKeychainSuite(t *testing.T) {
@@ -26,7 +26,7 @@ func TestKeychainSuite(t *testing.T) {
 }
 
 func (s *keychainTestSuite) BeforeTest(suiteName, testName string) {
-	s.executor = new(utiltest.MockExecutor2)
+	s.executor = new(utiltest.MockExecutor)
 	s.cmd = new(utiltest.MockExecutorCmd)
 	s.subject = keychain{s.executor, "/path/to/file.keychain"}
 	s.ctx, s.cancel = context.WithTimeout(context.Background(), 60*time.Second)

@@ -69,7 +69,7 @@ func TestStopBeforeStart(t *testing.T) {
 	cmd.Stop()
 
 	err := cmd.Run()
-	assert.EqualError(t, err, "Context deadline exceeded")
+	assert.EqualError(t, err, "context deadline exceeded")
 
 	// no panic calling Stop after command is done
 	cmd.Stop()

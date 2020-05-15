@@ -10,15 +10,15 @@ type MockExec struct {
 	mock.Mock
 }
 
-var MockExecutor *MockExec
-var Exec *MockExec
+var mockExecutor *MockExec
+var exec *MockExec
 
 func SetupMockExec() {
-	Exec = new(MockExec)
+	exec = new(MockExec)
 }
 
 func TearDownMockExec() {
-	Exec = nil
+	exec = nil
 }
 
 // ContextExec mock execute the program with the provided arguments and context

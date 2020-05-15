@@ -1,11 +1,12 @@
 package util
 
 import (
-	"fmt"
 	"io"
 	"os/exec"
 	"syscall"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Wraps exec.Cmd so we can capture errors.
@@ -89,12 +90,14 @@ func (cmd *cmdWrapper) Stop() {
 	}
 
 	if err := c.Process.Signal(syscall.SIGTERM); err != nil {
-		fmt.Println(err)
+		log.Error().AnErr("Err", err).Msg("Failed to stop")
 	}
 
 	time.AfterFunc(10*time.Second, func() {
 		if !c.ProcessState.Exited() {
-			c.Process.Signal(syscall.SIGKILL)
+			if err := c.Process.Signal(syscall.SIGKILL); err != nil {
+				log.Error().AnErr("Err", err).Msg("Failed to stop")
+			}
 		}
 	})
 }

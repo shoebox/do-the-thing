@@ -20,7 +20,7 @@ type DestinationTestSuite struct {
 	cmd      *utiltest.MockExecutorCmd
 	dest     Destination
 	subject  destinationService
-	executor *utiltest.MockExecutor2
+	executor *utiltest.MockExecutor
 	xcode    xcode.XCodeBuildService
 }
 
@@ -31,7 +31,7 @@ func TestExampleTestSuite(t *testing.T) {
 func (s *DestinationTestSuite) BeforeTest(suiteName, testName string) {
 	s.cmd = new(utiltest.MockExecutorCmd)
 	s.dest = Destination{Id: "123-456-789"}
-	s.executor = new(utiltest.MockExecutor2)
+	s.executor = new(utiltest.MockExecutor)
 	s.xcode = xcode.NewService(s.executor, "/path/to/project.pbxproj")
 	s.subject = destinationService{s.xcode, s.executor}
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
