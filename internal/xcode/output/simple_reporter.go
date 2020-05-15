@@ -21,7 +21,7 @@ func (s SimpleReporter) BuildTimeSummary(e LogEntry) {
 }
 
 func (s SimpleReporter) ErrorCompile(e LogEntry) {
-	fmt.Printf("%v - Compiling %v %v\n", color.RedString("✗ ERROR"), e.FileName, e.Error)
+	logError("Compiling", e.FileName, e.Error)
 }
 
 func (s SimpleReporter) ErrorCodeSign(e LogEntry) {
@@ -103,11 +103,11 @@ func (s SimpleReporter) CompileClang(e LogEntry) {
 }
 
 func (s SimpleReporter) CompileCommand(e LogEntry) {
-	fmt.Printf("%v %v %v\n", color.YellowString("▸ COMPILING"), "", e.FileName)
+	logPhase("COMPILING", e.FileName, "")
 }
 
 func (s SimpleReporter) CompileStoryboard(e LogEntry) {
-	fmt.Printf("%v %v %v\n", color.YellowString("▸ COMPILING"), "storyboard", e.FileName)
+	logPhase("COMPILING", "Storyboard", e.FileName)
 	log.Debug().
 		Str("File name", e.FileName).
 		Str("File path", e.FilePath).
@@ -115,7 +115,7 @@ func (s SimpleReporter) CompileStoryboard(e LogEntry) {
 }
 
 func (s SimpleReporter) CompileXIB(e LogEntry) {
-	fmt.Printf("%v %v %v\n", color.YellowString("▸ COMPILING"), "xib", e.FileName)
+	logPhase("COMPILING", "xib", e.FileName)
 }
 
 func (s SimpleReporter) CopyHeader(e LogEntry) {
@@ -167,28 +167,29 @@ func (s SimpleReporter) RunningShellCommand(e LogEntry) {
 }
 
 func (s SimpleReporter) TestCasePassed(e LogEntry) {
-	fmt.Printf("%v Test case - %v (%vs)\n",
-		color.GreenString("✔️ PASSED"),
-		e.TestCase,
-		e.Time)
+	// logSuccess("PASSED", e.TestCase, e.Time)
 }
 
 func (s SimpleReporter) TestCase(e LogEntry) {
-	fmt.Printf("Test case %v - %v\n", e.Status, e.TestCase)
+	if e.Status == "passed" {
+		logSuccess("TEST PASSED", e.TestCase, e.Time)
+	} else if e.Status == "failed" {
+		logError("TEST FAILED", e.TestCase, "")
+	}
 }
 
 func (s SimpleReporter) TestCaseMeasured(e LogEntry) {
 }
 
 func (s SimpleReporter) TestFailing(e LogEntry) {
-	fmt.Printf("✖️ %v - %v\n", color.RedString("Test failed"), e.FileName)
+	logError("TEST FAILED", e.FileName, "")
 }
 
 func (s SimpleReporter) TestSuiteStatus(e LogEntry) {
 	if e.Status == "failed" {
-		fmt.Printf("✖️ %v - %v\n", color.RedString("Test suite failed"), e.TestSuite)
+		logError("SUITE FAILED", e.TestSuite, "")
 	} else {
-		fmt.Printf("⏳ Test suite %v - %v\n", e.Status, e.TestSuite)
+		//.Printf(" Test suite %v - %v\n", e.Status, e.TestSuite)
 	}
 }
 
@@ -202,4 +203,16 @@ func (s SimpleReporter) WriteAuxiliaryFiles() {
 
 func (s SimpleReporter) WriteFiles() {
 	panic("implement me")
+}
+
+func logSuccess(msg string, msg1 string, msg2 string) {
+	fmt.Printf("  %v %v %v\n", color.GreenString("✔️ %v", msg), msg1, msg2)
+}
+
+func logError(msg string, msg1 string, msg2 string) {
+	fmt.Printf("  %v %v %v\n", color.RedString("✗ %v", msg), msg1, msg2)
+}
+
+func logPhase(msg string, msg1 string, msg2 string) {
+	fmt.Printf("  %v %v %v\n", color.YellowString("▸ %v", msg), msg1, msg2)
 }
