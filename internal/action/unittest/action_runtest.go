@@ -32,49 +32,23 @@ type actionRunTest struct {
 	xcode xcode.XCodeBuildService
 }
 
-type failedTest struct {
-	name   string
-	msg    string
-	target string
-}
-
 func NewActionRun(service xcode.XCodeBuildService, exec util.Executor) ActionRunTest {
 	return actionRunTest{xcode: service, exec: exec}
 }
 
 func (a actionRunTest) Run(ctx context.Context, dest string) error {
 	// Creating a temp folder to contains the test results
-	path := tempFileName("dothething", ".xcresult")
+	path, err := tempFileName("dothething", ".xcresult")
+	if err != nil {
+		return err
+	}
 
 	// Run test via xcodebuild
-	_, err := a.runXCodebuildTest(ctx, path, dest)
+	_, err = a.runXCodebuildTest(ctx, path, dest)
 	if err != nil {
 		return xcode.ParseXCodeBuildError(err)
 	}
 
-	// output.Parse(strings.NewReader(res))
-	/*
-		// TODO: Handle xcodebuild result
-
-		// Decode the content of the xcresult file
-		b, err := a.decodeXCResultFile(ctx, path)
-		if err != nil {
-			return err
-		}
-
-		// Retrieving the test failure summaries
-		issues, err := xcresult.ParseIssues(b)
-		if err != nil {
-			return err
-		}
-		for _, v := range issues {
-			log.Error().
-				Str("Case name", v.TestCaseName.Value).
-				Str("Message", v.Message.Value).
-				Str("File", v.Doc.URL.Value).
-				Msg("Test failed")
-		}
-	*/
 	return nil
 
 }
@@ -134,8 +108,11 @@ func (a actionRunTest) decodeXCResultFile(ctx context.Context, path string) ([]b
 }
 
 // TempFileName generates a temporary filename for use in testing or whatever
-func tempFileName(prefix, suffix string) string {
+func tempFileName(prefix, suffix string) (string, error) {
 	randBytes := make([]byte, 16)
-	rand.Read(randBytes)
-	return filepath.Join(os.TempDir(), prefix+hex.EncodeToString(randBytes)+suffix)
+	if _, err := rand.Read(randBytes); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(os.TempDir(), prefix+hex.EncodeToString(randBytes)+suffix), nil
 }

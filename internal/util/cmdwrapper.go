@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"io"
 	"os/exec"
 	"syscall"
@@ -87,7 +88,9 @@ func (cmd *cmdWrapper) Stop() {
 		return
 	}
 
-	c.Process.Signal(syscall.SIGTERM)
+	if err := c.Process.Signal(syscall.SIGTERM); err != nil {
+		fmt.Println(err)
+	}
 
 	time.AfterFunc(10*time.Second, func() {
 		if !c.ProcessState.Exited() {

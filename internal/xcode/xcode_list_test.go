@@ -12,10 +12,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const XCODES = `/Applications/Xcode.app
-/Applications/Xcode 10.3.1.app
-/Invalid/path`
-
 var install = Install{
 	Path:          "/Applications/Xcode.app",
 	BundleVersion: "1.2.3",

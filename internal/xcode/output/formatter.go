@@ -23,8 +23,9 @@ func (f formatter) Parse(r io.Reader) {
 		for _, matcher := range f.m {
 			b, m := matcher.Match(txt)
 			if b {
-				mapstructure.Decode(m, &entry)
-				matcher.logfunc(entry)
+				if err := mapstructure.Decode(m, &entry); err == nil {
+					matcher.logfunc(entry)
+				}
 				break
 			}
 		}

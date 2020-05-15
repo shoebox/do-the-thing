@@ -13,172 +13,168 @@ type MockListener struct {
 	mock.Mock
 }
 
-func (m MockListener) BuildAggregate(e LogEntry) {
+func (m *MockListener) BuildAggregate(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) BuildTimeSummary(e LogEntry) {
+func (m *MockListener) BuildTimeSummary(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) CompileCommand(e LogEntry) {
+func (m *MockListener) CompileCommand(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) CompileClang(e LogEntry) {
+func (m *MockListener) CompileClang(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) FormatAnalyze(e LogEntry) {
+func (m *MockListener) FormatAnalyze(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) FormatAnalyzeTarget(e LogEntry) {
+func (m *MockListener) FormatAnalyzeTarget(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) FormatAggregateTarget(e LogEntry) {
+func (m *MockListener) FormatAggregateTarget(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) FormatBuildTarget(e LogEntry) {
+func (m *MockListener) FormatBuildTarget(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) FormatCheckDependencies(e LogEntry) {
+func (m *MockListener) FormatCheckDependencies(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) CleanRemove(e LogEntry) {
+func (m *MockListener) CleanRemove(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) CleanTarget(e LogEntry) {
+func (m *MockListener) CleanTarget(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) CodeSign(e LogEntry) {
+func (m *MockListener) CodeSign(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) CompileStoryboard(e LogEntry) {
+func (m *MockListener) CompileStoryboard(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) CompileXIB(e LogEntry) {
+func (m *MockListener) CompileXIB(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) CopyHeader(e LogEntry) {
+func (m *MockListener) CopyHeader(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) Copy(e LogEntry) {
+func (m *MockListener) Copy(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) GenerateDSym(e LogEntry) {
+func (m *MockListener) GenerateDSym(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) LibTool(e LogEntry) {
+func (m *MockListener) LibTool(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) Linking(e LogEntry) {
+func (m *MockListener) Linking(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) PhaseSucceeded(e LogEntry) {
+func (m *MockListener) PhaseSucceeded(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) PhaseScriptExecution(e LogEntry) {
+func (m *MockListener) PhaseScriptExecution(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) RunningShellCommand(e LogEntry) {
+func (m *MockListener) RunningShellCommand(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) TestFailing(e LogEntry) {
+func (m *MockListener) TestFailing(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) TestCase(e LogEntry) {
+func (m *MockListener) TestCase(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) TestCasePassed(e LogEntry) {
+func (m *MockListener) TestCasePassed(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) TestCasePending(e LogEntry) {
+func (m *MockListener) TestCasePending(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) TestCaseMeasured(e LogEntry) {
+func (m *MockListener) TestCaseMeasured(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) TestCaseStarted(e LogEntry) {
+func (m *MockListener) TestCaseStarted(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) TestSuiteComplete(e LogEntry) {
+func (m *MockListener) TestSuiteComplete(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) TestSuiteStatus(e LogEntry) {
+func (m *MockListener) TestSuiteStatus(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) TestSuiteFailed(e LogEntry) {
+func (m *MockListener) TestSuiteFailed(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) TillUtif(e LogEntry) {
+func (m *MockListener) TillUtif(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) Touch(e LogEntry) {
+func (m *MockListener) Touch(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) ErrorCompile(e LogEntry) {
+func (m *MockListener) ErrorCompile(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) ErrorCodeSign(e LogEntry) {
+func (m *MockListener) ErrorCodeSign(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) ErrorClang(e LogEntry) {
+func (m *MockListener) ErrorClang(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) ErrorFatal(e LogEntry) {
+func (m *MockListener) ErrorFatal(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) ErrorSignature(e LogEntry) {
+func (m *MockListener) ErrorSignature(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) ErrorMissing(e LogEntry) {
+func (m *MockListener) ErrorMissing(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) ErrorLD(e LogEntry) {
+func (m *MockListener) ErrorLD(e LogEntry) {
 	m.Called(e)
 }
 
-func (m MockListener) ErrorUndefinedSymbol(e LogEntry) {
+func (m *MockListener) ErrorUndefinedSymbol(e LogEntry) {
 	m.Called(e)
-}
-
-func Setup(t *testing.M) {
-	fmt.Println("Setup")
 }
 
 func TestParse(t *testing.T) {
@@ -460,7 +456,7 @@ func TestParse(t *testing.T) {
 			t.Parallel()
 
 			// setup
-			l := MockListener{}
+			l := &MockListener{}
 			l.On(c.m, mock.Anything).Run(func(args mock.Arguments) {
 				assert.EqualValues(t, c.e, args.Get(0))
 			}).Return(nil)
