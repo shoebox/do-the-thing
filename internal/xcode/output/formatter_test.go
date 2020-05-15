@@ -457,6 +457,8 @@ func TestParse(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("Test Matcher Case %v", c.m), func(t *testing.T) {
+			t.Parallel()
+
 			// setup
 			l := MockListener{}
 			l.On(c.m, mock.Anything).Run(func(args mock.Arguments) {

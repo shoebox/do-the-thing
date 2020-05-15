@@ -49,8 +49,7 @@ func (p provisioningService) Decode(ctx context.Context, filePath string) (Provi
 	}
 
 	// Parse plist file
-	err = util.DecodeFile(bytes.NewReader(data), &pp)
-	if err != nil {
+	if err := util.DecodeFile(bytes.NewReader(data), &pp); err != nil {
 		return pp, ErrorFailedToDecode
 	}
 

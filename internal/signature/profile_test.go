@@ -1,12 +1,16 @@
 package signature
 
 import (
+	"context"
 	"dothething/internal/utiltest"
+	"errors"
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-var mockExec *utiltest.MockExec
-
-var validProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
+const validProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -65,7 +69,7 @@ var validProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
 </dict>
 </plist>`
 
-var invalidProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
+const invalidProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -124,86 +128,100 @@ var invalidProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
 </dict>
 </plist>`
 
-func setup() {
-	mockExec = new(utiltest.MockExec)
+const validPath = "/path/to/file.provisioning"
+const invalidPath = "/path/to/file2.provisioning"
+
+var mockExec *utiltest.MockExecutor2
+var subject provisioningService
+
+func TestMain(m *testing.M) {
+	mockExec = new(utiltest.MockExecutor2)
+	subject = provisioningService{mockExec}
+
+	mockExec.MockCommandContext(Security,
+		[]string{Cms, ArgDecodeCMS, ArgInlineFile, validPath},
+		validProvisioning,
+		nil)
+
+	os.Exit(m.Run())
 }
 
-/*
-func TestProvisioningProfileDecoding(t *testing.T) {
-	path := "test/path/test.mobileprovision"
+func TestDecode(t *testing.T) {
+	// when:
+	pp, err := subject.Decode(context.Background(), validPath)
 
-	t.Run("Decoding erors should be raised", func(t *testing.T) {
-		setup()
+	// then:
+	assert.NoError(t, err)
+	assert.Equal(t, "abc.def.ghi", pp.AppID)
+	assert.Equal(t, []string([]string{"12345ABCDE"}), pp.TeamIdentifier)
+	assert.Equal(t, "Selfsigners united", pp.TeamName)
+	assert.Equal(t, "B5C2906D-D6EE-476E-AF17-D99AE14644AA", pp.UUID)
+	assert.NoError(t, err)
+}
 
-		// setup:
-		mockExec.
-			On("Exec", Security, []string{Cms, ArgDecodeCMS, ArgInlineFile, path}).
-			Return(nil, errors.New("error"))
+func TestDecodeShouldHandleErrors(t *testing.T) {
+	// setup:
+	mockExec.MockCommandContext(Security,
+		[]string{Cms, ArgDecodeCMS, ArgInlineFile, invalidPath},
+		"",
+		errors.New("error text"))
 
-		// when:
-		pp, err := DecodeProvisioningProfile(path, mockExec)
+	// when:
+	pp, err := subject.Decode(context.Background(), invalidPath)
 
-		// then:
-		assert.EqualValues(t, err, ErrorFailedToDecode)
-		assert.Nil(t, pp)
-	})
+	// then:
+	assert.EqualError(t, err, "error text")
+	assert.Empty(t, pp)
+}
 
-	t.Run("Decoding erors should be raised", func(t *testing.T) {
-		setup()
+func TestDecodeShouldHandleDecodingErrors(t *testing.T) {
+	// setup:
+	mockExec.MockCommandContext(Security,
+		[]string{Cms, ArgDecodeCMS, ArgInlineFile, "/fake/path/fake-file.mobileprovision"},
+		`{"json":"text"}`,
+		nil)
 
-		// setup:
-		mockExec.
-			On("Exec", Security, []string{Cms, ArgDecodeCMS, ArgInlineFile, path}).
-			Return("invalid", nil)
+	// when:
+	pp, err := subject.Decode(context.Background(), "/fake/path/fake-file.mobileprovision")
 
-		// when:
-		pp, err := DecodeProvisioningProfile(path, mockExec)
+	// then:
+	assert.EqualError(t, err, "Failed to decode the provisioning file")
+	assert.Empty(t, pp)
+}
 
-		// then:
-		assert.EqualValues(t, err, ErrorFailedToDecode)
-		assert.Nil(t, pp)
-	})
+func TestDecodeCertShouldHandleDecodingErrors(t *testing.T) {
+	// setup:
+	mockExec.MockCommandContext(Security,
+		[]string{Cms, ArgDecodeCMS, ArgInlineFile, "/toto/tutu/fake.mobileprovision"},
+		invalidProvisioning,
+		nil)
 
-	t.Run("Shouldd parse certificates", func(t *testing.T) {
-		setup()
-		path := "test/path/test.mobileprovision"
+	// when:
+	pp, err := subject.Decode(context.Background(), "/toto/tutu/fake.mobileprovision")
 
-		// setup:
-		mockExec.
-			On("Exec", Security, []string{Cms, ArgDecodeCMS, ArgInlineFile, path}).
-			Return(validProvisioning, nil)
+	// then:
+	assert.EqualError(t, err, "Failed to parse the provisioning file certificate")
 
-		// when:
-		b, err := DecodeProvisioningProfile(path, mockExec)
+	// and:
+	assert.Equal(t, "abc.def.ghi", pp.AppID)
+	assert.Equal(t, []string([]string{"12345ABCDE"}), pp.TeamIdentifier)
+	assert.Equal(t, "Selfsigners united", pp.TeamName)
+	assert.Equal(t, "B5C2906D-D6EE-476E-AF17-D99AE14644AA", pp.UUID)
+}
 
-		// then:
-		assert.NoError(t, err)
-		assert.Equal(t, "abc.def.ghi", b.AppID)
-		assert.Equal(t, []string([]string{"12345ABCDE"}), b.TeamIdentifier)
-		assert.Equal(t, "Selfsigners united", b.TeamName)
-		assert.Equal(t, "B5C2906D-D6EE-476E-AF17-D99AE14644AA", b.UUID)
+func TestFileDecodingProvisioningExecutation(t *testing.T) {
+	// setup:
+	ctx := context.Background()
 
-		// and
-		mockExec.AssertExpectations(t)
-	})
+	// when:
+	b, err := subject.decodeProvisioning(ctx, validPath)
 
-	t.Run("Should handle decoding errors", func(*testing.T) {
-		// when:
-		setup()
-		path := "test/path/test.mobileprovision"
+	// then:
+	assert.NoError(t, err)
+	assert.EqualValues(t, validProvisioning, string(b))
 
-		// setup:
-		mockExec.
-			On("Exec", Security, []string{Cms, ArgDecodeCMS, ArgInlineFile, path}).
-			Return(invalidProvisioning, nil)
-
-		// when:
-		b, err := DecodeProvisioningProfile(path, mockExec)
-
-		// then:
-		assert.Nil(t, b)
-		assert.EqualError(t, err, "Failed to parse the provisioning file certificate")
-	})
+	// and:
+	mockExec.AssertExpectations(t)
 }
 
 func TestParseRawX509Certificates(t *testing.T) {
@@ -219,47 +237,3 @@ func TestParseRawX509Certificates(t *testing.T) {
 		assert.Nil(t, res)
 	})
 }
-
-func TestFileDecodingExecution(t *testing.T) {
-	t.Run("Should execute the command", func(t *testing.T) {
-		setup()
-		path := "test/path/test.mobileprovision"
-
-		// setup:
-		mockExec.
-			On("Exec", Security, []string{Cms, ArgDecodeCMS, ArgInlineFile, path}).
-			Return("hello world", nil)
-
-		// when:
-		b, err := decodeProvisioning(path, mockExec)
-
-		// then:
-		assert.NoError(t, err)
-		assert.EqualValues(t, []byte("hello world"), b)
-
-		// and:
-		mockExec.AssertExpectations(t)
-	})
-
-	t.Run("Should handle command errorr", func(t *testing.T) {
-		setup()
-		path := "test/path/test.mobileprovision"
-
-		// setup:
-		mockExec.
-			On("Exec", Security, []string{Cms, ArgDecodeCMS, ArgInlineFile, path}).
-			Return(nil, errors.New("error"))
-
-		// when:
-		b, err := decodeProvisioning(path, mockExec)
-
-		// then:
-		assert.EqualValues(t, ErrorFailedToDecode, err)
-		assert.Nil(t, b)
-
-		// and:
-		mockExec.AssertExpectations(t)
-	})
-
-}
-*/
