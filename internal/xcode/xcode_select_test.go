@@ -1,167 +1,113 @@
 package xcode
 
 import (
-	"fmt"
-
-	"github.com/blang/semver"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"context"
+	"dothething/internal/utiltest"
+	"errors"
 
 	"testing"
 
-	"dothething/internal/utiltest"
+	"github.com/blang/semver"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	"github.com/stretchr/testify/suite"
 )
 
-type MockListService struct {
+type selectSuite struct {
+	suite.Suite
+	listContext     context.Context
+	mockExec        *utiltest.MockExecutor
+	mockFileService *utiltest.MockFileService
+	subject         selectService
+	listService     *mockListService
+}
+
+type mockListService struct {
 	mock.Mock
 }
 
-func (m *MockListService) List() ([]*Install, error) {
-	args := m.Called()
-
-	if args.Error(1) != nil {
-		return nil, args.Error(1)
-	}
-
-	res2 := args.Get(0)
-	s, ok := res2.([]*Install)
-	if ok {
-		return s, nil
-	}
-	return nil, nil
+func (m *mockListService) List(ctx context.Context) ([]*Install, error) {
+	r := m.Called(ctx)
+	return r.Get(0).([]*Install), r.Error(1)
 }
 
-var subject *XCodeSelectService
-var exec *utiltest.MockExec
-var mockListService *MockListService
-
-func setupSelectTest() {
-	exec = new(utiltest.MockExec)
-	mockListService = new(MockListService)
-	subject = NewSelectService(mockListService, exec)
+// In order for 'go test' to run this suite, we need to create
+// a normal test function and pass our suite to suite.Run
+func TestXCodeSelectSuite(t *testing.T) {
+	suite.Run(t, new(selectSuite))
 }
 
-func mockResults() {
-	mockListService.On("List").Return([]*Install{
-		&Install{Path: "/Applications/Xcode 1.2.3.app",
-			BundleVersion: "1.2.3-snapshot",
-			Version:       "1.2.3"},
-
-		&Install{Path: "/Applications/Xcode 10.3.1app",
-			BundleVersion: "10.3.1-snapshot",
-			Version:       "10.3.1"},
-
-		&Install{Path: "/Applications/Xcode.app",
-			BundleVersion: "7.1-snapshot",
-			Version:       "7.1"},
-	}, nil)
+func (s *selectSuite) SetupTest() {
+	s.mockExec = new(utiltest.MockExecutor)
+	s.listContext = context.Background()
+	s.mockFileService = new(utiltest.MockFileService)
+	s.listService = new(mockListService)
+	s.subject = selectService{Executor: s.mockExec, list: s.listService}
 }
 
-func TestVersionSelection(t *testing.T) {
-	t.Run("Should handle invalid requirement", func(t *testing.T) {
-		install, err := subject.Find("Invalid")
-		assert.Nil(t, install)
-		assert.EqualError(t, err, ErrInvalidVersion.Error())
+var install1 = Install{
+	Path:          "",
+	BundleVersion: "",
+	Version:       "11.3.1",
+}
+
+func (s *selectSuite) TestErroHandlingWhileListing() {
+	s.listService.On("List", mock.Anything).
+		Return([]*Install{}, errors.New("error text"))
+
+	i, err := s.subject.Find(s.listContext, "10.0.0")
+	s.Assert().Nil(i)
+	s.Assert().EqualError(err, ErrMatchNotFound.Error())
+}
+
+func (s *selectSuite) TestFind() {
+	s.listService.On("List", mock.Anything).
+		Return([]*Install{
+			&install1,
+		}, nil)
+
+	s.Run("Should handle invalid requirement", func() {
+		install, err := s.subject.Find(s.listContext, "Invalid")
+		s.Assert().Nil(install)
+		s.Assert().EqualError(err, ErrInvalidVersion.Error())
 	})
 
-	t.Run("If a error happens during the resolution, it should be reported", func(t *testing.T) {
-		setupSelectTest()
-		mockListService.On("List").
-			Return(nil, fmt.Errorf("Listing error"))
-
-		install, err := subject.Find("1.2.3")
-		assert.Nil(t, install)
-		assert.Error(t, err, "Listing error")
+	s.Run("Should handle invalid requirement", func() {
+		install, err := s.subject.Find(s.listContext, "12.3.1")
+		s.Assert().Nil(install)
+		s.Assert().EqualError(err, ErrMatchNotFound.Error())
 	})
 
-	t.Run("Should properly select the version if available", func(t *testing.T) {
-		setupSelectTest()
-		mockResults()
-		installl, err := subject.Find("10.3.1")
-		assert.NoError(t, err)
-		assert.NotNil(t, installl)
-	})
-
-	t.Run("When could not find an instance should throw an error", func(t *testing.T) {
-		setupSelectTest()
-		mockResults()
-		installl, err := subject.Find("10.3.3")
-		assert.EqualValues(t, ErrMatchNotFound, err)
-		assert.Nil(t, installl)
-	})
-
-	t.Run("Target resolution", func(t *testing.T) {
-		setupSelectTest()
-		mockResults()
-		installl, err := subject.Find("10.3.1")
-		fmt.Println("install", installl)
-		assert.Nil(t, err)
-		assert.NotNil(t, installl)
-		assert.EqualValues(t, installl.Version, "10.3.1")
+	s.Run("Should handle invalid requirement", func() {
+		install, err := s.subject.Find(s.listContext, "11.3.1")
+		s.Assert().NoError(err)
+		s.Assert().EqualValues(&install1, install)
 	})
 }
 
-func TestIsEqualMatch(t *testing.T) {
+func (s *selectSuite) TestIsEqualMatch() {
 	install := Install{Version: "10.2.3"}
 
-	t.Run("Matching should work as expected", func(t *testing.T) {
+	s.Run("Matching should work as expected", func() {
 		v1, _ := semver.Parse("10.2.3")
 		v2, _ := semver.Parse("10.2.0")
 
-		r, err := subject.isEqualMatch(&install, v1)
-		assert.True(t, r)
-		assert.NoError(t, err)
+		r, err := s.subject.isEqualMatch(&install, v1)
+		s.Assert().True(r)
+		s.Assert().NoError(err)
 
-		r, err = subject.isEqualMatch(&install, v2)
-		assert.False(t, r)
-		assert.NoError(t, err)
+		r, err = s.subject.isEqualMatch(&install, v2)
+		s.Assert().False(r)
+		s.Assert().NoError(err)
 	})
 
-	t.Run("Error should be handled", func(t *testing.T) {
+	s.Run("Error should be handled", func() {
 		v3, _ := semver.Parse("")
-		r, err := subject.isEqualMatch(&install, v3)
-		assert.NoError(t, err)
-		assert.False(t, r)
-	})
-}
-
-func TestFindMatch(t *testing.T) {
-
-	required, err := semver.Parse("10.3.1")
-	assert.Nil(t, err)
-
-	t.Run("Valid match", func(t *testing.T) {
-		setupSelectTest()
-		mockResults()
-
-		install, err := subject.findMatch(required, subject.isEqualMatch)
-		assert.NotNil(t, install)
-		assert.NoError(t, err, "")
-	})
-
-	t.Run("should handle error", func(t *testing.T) {
-		setupSelectTest()
-		mockListService.On("List").
-			Return(nil, fmt.Errorf("Listing error"))
-
-		install, err := subject.findMatch(required, subject.isEqualMatch)
-		assert.Nil(t, install)
-		assert.EqualError(t, err, "Listing error")
-	})
-
-	t.Run("Should return ErrMatchNotFound in case of zero matchs", func(t *testing.T) {
-		setupSelectTest()
-
-		inst := &Install{}
-		mockListService.On("List").Return([]*Install{inst}, nil)
-
-		required2, err := semver.Parse("10.1.0")
-		assert.Nil(t, err)
-
-		install, err := subject.findMatch(required2, subject.isEqualMatch)
-		fmt.Println(install, err)
-		assert.Nil(t, install)
-		assert.EqualError(t, err, ErrMatchNotFound.Error())
+		r, err := s.subject.isEqualMatch(&install, v3)
+		s.Assert().NoError(err)
+		s.Assert().False(r)
 	})
 }
 

@@ -2,6 +2,7 @@ package signature
 
 import (
 	"bytes"
+	"context"
 	"crypto/x509"
 	"dothething/internal/util"
 	"errors"
@@ -28,36 +29,45 @@ var (
 	ErrorParsingPublicKey = errors.New("Failed to parse the provisioning file certificate")
 )
 
-func DecodeProvisioningProfile(filePath string, exec util.Exec) (*ProvisioningProfile, error) {
+type ProvisioningService interface {
+	Decode(ctx context.Context, filePath string)
+}
+
+type provisioningService struct {
+	util.Executor
+}
+
+func NewProvisioningService(e util.Executor) provisioningService {
+	return provisioningService{Executor: e}
+}
+
+func (p provisioningService) Decode(ctx context.Context, filePath string) (ProvisioningProfile, error) {
 	var pp ProvisioningProfile
-	data, err := decodeProvisioning(filePath, exec)
+	data, err := p.decodeProvisioning(ctx, filePath)
 	if err != nil {
-		return nil, err
+		return pp, err
 	}
 
 	// Parse plist file
-	err = util.DecodeFile(bytes.NewReader(data), &pp)
-	if err != nil {
-		return nil, ErrorFailedToDecode
+	if err := util.DecodeFile(bytes.NewReader(data), &pp); err != nil {
+		return pp, ErrorFailedToDecode
 	}
 
 	// Parse raw x509 Certificates
 	pp.Certificates, err = parseRawX509Certificates(pp.RawCertificates)
 	if err != nil {
-		return nil, err
+		return pp, err
 	}
 
-	return &pp, err
+	return pp, err
 }
 
-func decodeProvisioning(filePath string, exec util.Exec) ([]byte, error) {
+func (p provisioningService) decodeProvisioning(ctx context.Context, filePath string) ([]byte, error) {
 	// Invoke security tool to decode the file
-	data, err := exec.Exec(nil, Security, Cms, ArgDecodeCMS, ArgInlineFile, filePath)
-	if err != nil {
-		return nil, ErrorFailedToDecode
-	}
-
-	return data, err
+	return p.Executor.CommandContext(ctx,
+		Security,
+		Cms, ArgDecodeCMS,
+		ArgInlineFile, filePath).Output()
 }
 
 func parseRawX509Certificates(raw [][]byte) ([]*x509.Certificate, error) {
