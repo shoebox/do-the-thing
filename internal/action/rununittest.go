@@ -2,15 +2,11 @@ package action
 
 import (
 	"context"
-	"crypto/rand"
 	"dothething/internal/destination"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
 	"dothething/internal/xcode/output"
-	"encoding/hex"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/fatih/color"
 )
@@ -39,7 +35,7 @@ func NewActionRun(service xcode.XCodeBuildService, exec util.Executor) ActionRun
 
 func (a actionRunTest) Run(ctx context.Context, d destination.Destination, config xcode.Config) error {
 	// Creating a temp folder to contains the test results
-	path, err := tempFileName("dothething", ".xcresult")
+	path, err := util.TempFileName("dothething", ".xcresult")
 	if err != nil {
 		return err
 	}
@@ -105,14 +101,4 @@ func (a actionRunTest) decodeXCResultFile(ctx context.Context, path string) ([]b
 		flagFormat, formatJson,
 		flagPath, path,
 	).Output()
-}
-
-// TempFileName generates a temporary filename for use in testing or whatever
-func tempFileName(prefix, suffix string) (string, error) {
-	randBytes := make([]byte, 16)
-	if _, err := rand.Read(randBytes); err != nil {
-		return "", err
-	}
-
-	return filepath.Join(os.TempDir(), prefix+hex.EncodeToString(randBytes)+suffix), nil
 }
