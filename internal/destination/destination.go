@@ -59,7 +59,7 @@ func (s destinationService) Boot(ctx context.Context, d Destination) error {
 		return err
 	}
 
-	log.Info().
+	log.Debug().
 		Str("Result", string(b)).
 		Msg("Booting results")
 

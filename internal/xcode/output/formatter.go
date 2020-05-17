@@ -3,6 +3,7 @@ package output
 import (
 	"bufio"
 	"io"
+	"strings"
 
 	"github.com/mitchellh/mapstructure"
 )
@@ -21,12 +22,12 @@ func (f formatter) Parse(r io.Reader) {
 	for scanner.Scan() {
 		txt := scanner.Text()
 		for _, matcher := range f.m {
-			b, m := matcher.Match(txt)
+			b, m := matcher.Match(strings.ReplaceAll(txt, `\ `, ""))
 			if b {
 				if err := mapstructure.Decode(m, &entry); err == nil {
 					matcher.logfunc(entry)
+					break
 				}
-				break
 			}
 		}
 	}

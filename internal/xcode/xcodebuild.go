@@ -43,6 +43,9 @@ const (
 
 	// ActionClean Remove build products and intermediate files from the build root
 	ActionClean = "clean"
+
+	// ActionArchive
+	ActionArchive = "archive"
 )
 
 // XCodeBuildService service definition

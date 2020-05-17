@@ -13,169 +13,48 @@ type MockListener struct {
 	mock.Mock
 }
 
-func (m *MockListener) BuildAggregate(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) BuildTimeSummary(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) CompileCommand(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) CompileClang(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) FormatAnalyze(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) FormatAnalyzeTarget(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) FormatAggregateTarget(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) FormatBuildTarget(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) FormatCheckDependencies(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) CleanRemove(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) CleanTarget(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) CodeSign(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) CompileStoryboard(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) CompileXIB(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) CopyHeader(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) Copy(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) GenerateDSym(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) LibTool(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) Linking(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) PhaseSucceeded(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) PhaseScriptExecution(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) RunningShellCommand(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) TestFailing(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) TestCase(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) TestCasePassed(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) TestCasePending(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) TestCaseMeasured(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) TestCaseStarted(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) TestSuiteComplete(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) TestSuiteStatus(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) TestSuiteFailed(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) TillUtif(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) Touch(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) ErrorCompile(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) ErrorCodeSign(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) ErrorClang(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) ErrorFatal(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) ErrorSignature(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) ErrorMissing(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) ErrorLD(e LogEntry) {
-	m.Called(e)
-}
-
-func (m *MockListener) ErrorUndefinedSymbol(e LogEntry) {
-	m.Called(e)
-}
+func (m *MockListener) BuildAggregate(e LogEntry)          { m.Called(e) }
+func (m *MockListener) BuildTimeSummary(e LogEntry)        { m.Called(e) }
+func (m *MockListener) CleanRemove(e LogEntry)             { m.Called(e) }
+func (m *MockListener) CleanTarget(e LogEntry)             { m.Called(e) }
+func (m *MockListener) CodeSign(e LogEntry)                { m.Called(e) }
+func (m *MockListener) CompileClang(e LogEntry)            { m.Called(e) }
+func (m *MockListener) CompileCommand(e LogEntry)          { m.Called(e) }
+func (m *MockListener) CompileStoryboard(e LogEntry)       { m.Called(e) }
+func (m *MockListener) CompileXIB(e LogEntry)              { m.Called(e) }
+func (m *MockListener) Copy(e LogEntry)                    { m.Called(e) }
+func (m *MockListener) CopyHeader(e LogEntry)              { m.Called(e) }
+func (m *MockListener) ErrorClang(e LogEntry)              { m.Called(e) }
+func (m *MockListener) ErrorCodeSign(e LogEntry)           { m.Called(e) }
+func (m *MockListener) ErrorCompile(e LogEntry)            { m.Called(e) }
+func (m *MockListener) ErrorFatal(e LogEntry)              { m.Called(e) }
+func (m *MockListener) ErrorLD(e LogEntry)                 { m.Called(e) }
+func (m *MockListener) ErrorMissing(e LogEntry)            { m.Called(e) }
+func (m *MockListener) ErrorSignature(e LogEntry)          { m.Called(e) }
+func (m *MockListener) ErrorUndefinedSymbol(e LogEntry)    { m.Called(e) }
+func (m *MockListener) FormatAggregateTarget(e LogEntry)   { m.Called(e) }
+func (m *MockListener) FormatAnalyze(e LogEntry)           { m.Called(e) }
+func (m *MockListener) FormatAnalyzeTarget(e LogEntry)     { m.Called(e) }
+func (m *MockListener) FormatBuildTarget(e LogEntry)       { m.Called(e) }
+func (m *MockListener) FormatCheckDependencies(e LogEntry) { m.Called(e) }
+func (m *MockListener) GenerateDSym(e LogEntry)            { m.Called(e) }
+func (m *MockListener) LibTool(e LogEntry)                 { m.Called(e) }
+func (m *MockListener) Linking(e LogEntry)                 { m.Called(e) }
+func (m *MockListener) PhaseScriptExecution(e LogEntry)    { m.Called(e) }
+func (m *MockListener) PhaseSucceeded(e LogEntry)          { m.Called(e) }
+func (m *MockListener) RunningShellCommand(e LogEntry)     { m.Called(e) }
+func (m *MockListener) TestCase(e LogEntry)                { m.Called(e) }
+func (m *MockListener) TestCaseMeasured(e LogEntry)        { m.Called(e) }
+func (m *MockListener) TestCasePassed(e LogEntry)          { m.Called(e) }
+func (m *MockListener) TestCasePending(e LogEntry)         { m.Called(e) }
+func (m *MockListener) TestCaseStarted(e LogEntry)         { m.Called(e) }
+func (m *MockListener) TestFailing(e LogEntry)             { m.Called(e) }
+func (m *MockListener) TestSuiteComplete(e LogEntry)       { m.Called(e) }
+func (m *MockListener) TestSuiteFailed(e LogEntry)         { m.Called(e) }
+func (m *MockListener) TestSuiteStatus(e LogEntry)         { m.Called(e) }
+func (m *MockListener) TillUtif(e LogEntry)                { m.Called(e) }
+func (m *MockListener) Touch(e LogEntry)                   { m.Called(e) }
+func (m *MockListener) Warning(e LogEntry)                 { m.Called(e) }
 
 func TestParse(t *testing.T) {
 	//
@@ -186,7 +65,17 @@ func TestParse(t *testing.T) {
 	}{
 		{
 			m: "BuildTimeSummary",
-			d: "CompileSwiftSources (12 task) | 13.774 seconds",
+			d: "CompileSwiftSources (1 task) | 13.774 seconds",
+			e: LogEntry{
+				Name:  "CompileSwiftSources",
+				Count: "1",
+				Time:  "13.774",
+				Unit:  "seconds",
+			},
+		},
+		{
+			m: "BuildTimeSummary",
+			d: "CompileSwiftSources (12 tasks) | 13.774 seconds",
 			e: LogEntry{
 				Name:  "CompileSwiftSources",
 				Count: "12",
