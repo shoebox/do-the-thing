@@ -7,6 +7,20 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	PASS       = "✓"
+	FAIL       = "✗"
+	PENDING    = "⧖"
+	COMPLETION = "▸"
+	MEASURE    = "◷"
+
+	ASCII_PASS       = "."
+	ASCII_FAIL       = "x"
+	ASCII_PENDING    = "P"
+	ASCII_COMPLETION = ">"
+	ASCII_MEASURE    = 'T'
+)
+
 type SimpleReporter struct {
 }
 
@@ -14,10 +28,9 @@ func (s SimpleReporter) BuildAggregate(e LogEntry) {
 }
 
 func (s SimpleReporter) BuildTimeSummary(e LogEntry) {
-	log.Debug().
-		Str("Name", e.Name).
-		Str("Task(s) count", e.Count).
-		Msg("BuildTimeSummary")
+	logMeasure("TIMING",
+		e.Name,
+		fmt.Sprintf("%v task(s) in %v", e.Count, fmt.Sprintf("%v %v", e.Time, e.Unit)))
 }
 
 func (s SimpleReporter) ErrorCompile(e LogEntry) {
@@ -71,11 +84,7 @@ func (s SimpleReporter) FormatAggregateTarget(e LogEntry) {
 }
 
 func (s SimpleReporter) FormatBuildTarget(e LogEntry) {
-	log.Debug().
-		Str("Configuration", e.Configuration).
-		Str("Target", e.Target).
-		Str("Project", e.Project).
-		Msg("Building")
+	logPhase("BUILD TARGET", e.Target, e.Configuration)
 }
 
 func (s SimpleReporter) FormatCheckDependencies(e LogEntry) {
@@ -95,11 +104,11 @@ func (s SimpleReporter) CleanTarget(e LogEntry) {
 }
 
 func (s SimpleReporter) CodeSign(e LogEntry) {
-	log.Info().
-		Str("File path", e.FilePath).
-		Msg("Signin")
+	logPhase("CODESIGN", e.FileName, "")
 }
+
 func (s SimpleReporter) CompileClang(e LogEntry) {
+	logPhase("COMPILING", e.FileName, "")
 }
 
 func (s SimpleReporter) CompileCommand(e LogEntry) {
@@ -108,10 +117,6 @@ func (s SimpleReporter) CompileCommand(e LogEntry) {
 
 func (s SimpleReporter) CompileStoryboard(e LogEntry) {
 	logPhase("COMPILING", "Storyboard", e.FileName)
-	log.Debug().
-		Str("File name", e.FileName).
-		Str("File path", e.FilePath).
-		Msg("Compiling storyboard")
 }
 
 func (s SimpleReporter) CompileXIB(e LogEntry) {
@@ -119,16 +124,9 @@ func (s SimpleReporter) CompileXIB(e LogEntry) {
 }
 
 func (s SimpleReporter) CopyHeader(e LogEntry) {
-	log.Debug().
-		Str("Source", e.SourceFile).
-		Str("Target", e.TargetFile).
-		Msg("Copying")
 }
 
 func (s SimpleReporter) Copy(e LogEntry) {
-	log.Debug().
-		Str("Res", e.Arg).
-		Msg("Copying")
 }
 
 func (s SimpleReporter) GenerateDSym(e LogEntry) {
@@ -138,9 +136,7 @@ func (s SimpleReporter) GenerateDSym(e LogEntry) {
 }
 
 func (s SimpleReporter) LibTool(e LogEntry) {
-	log.Debug().
-		Str("File", e.FileName).
-		Msg("Building library")
+	logPhase("LIBTOOL", e.FileName, "")
 }
 
 func (s SimpleReporter) Linking(e LogEntry) {
@@ -156,18 +152,14 @@ func (s SimpleReporter) PhaseSucceeded(e LogEntry) {
 }
 
 func (s SimpleReporter) PhaseScriptExecution(e LogEntry) {
-	fmt.Println("PhaseScriptExecution", e.Name)
+	logPhase("SCRIPT", e.Name, "")
 }
 
 func (s SimpleReporter) RunningShellCommand(e LogEntry) {
-	log.Debug().
-		Str("Command", e.Command).
-		Str("Arg", e.Arg).
-		Msg("Running shell command")
 }
 
 func (s SimpleReporter) TestCasePassed(e LogEntry) {
-	// logSuccess("PASSED", e.TestCase, e.Time)
+	logSuccess("TEST PASSED", e.TestCase, e.Time)
 }
 
 func (s SimpleReporter) TestCase(e LogEntry) {
@@ -194,7 +186,11 @@ func (s SimpleReporter) TestSuiteStatus(e LogEntry) {
 }
 
 func (s SimpleReporter) Touch(e LogEntry) {
-	// panic("implement me")
+	logPhase("TOUCH", e.FileName, "")
+}
+
+func (s SimpleReporter) Warning(e LogEntry) {
+	logWarning("WARNING", e.Message, e.FileName)
 }
 
 func (s SimpleReporter) WriteAuxiliaryFiles() {
@@ -206,13 +202,21 @@ func (s SimpleReporter) WriteFiles() {
 }
 
 func logSuccess(msg string, msg1 string, msg2 string) {
-	fmt.Printf("  %v %v %v\n", color.GreenString("✔️ %v", msg), msg1, msg2)
+	fmt.Printf("  %v %v %v\n", color.GreenString("%v %-10s", PASS, msg), msg1, msg2)
 }
 
 func logError(msg string, msg1 string, msg2 string) {
-	fmt.Printf("  %v %v %v\n", color.RedString("✗ %v", msg), msg1, msg2)
+	fmt.Printf("  %v %v %v\n", color.RedString("%v %-10s", FAIL, msg), msg1, msg2)
 }
 
 func logPhase(msg string, msg1 string, msg2 string) {
-	fmt.Printf("  %v %v %v\n", color.YellowString("▸ %v", msg), msg1, msg2)
+	fmt.Printf("  %v %v %v\n", color.YellowString("%v %-10s", COMPLETION, msg), msg1, msg2)
+}
+
+func logMeasure(msg string, msg1 string, msg2 string) {
+	fmt.Printf("  %v %-30s %v\n", color.GreenString("%v %-10s", MEASURE, msg), msg1, msg2)
+}
+
+func logWarning(msg string, msg1 string, msg2 string) {
+	fmt.Printf("  %v %-30s %v\n", color.YellowString("%v %-10s", FAIL, msg), msg1, msg2)
 }
