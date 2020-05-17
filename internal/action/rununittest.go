@@ -1,4 +1,4 @@
-package unittest
+package action
 
 import (
 	"context"
@@ -24,7 +24,7 @@ const (
 )
 
 type ActionRunTest interface {
-	Run(ctx context.Context, dest string) error
+	Run(ctx context.Context, dest string, config xcode.Config) error
 }
 
 type actionRunTest struct {
@@ -36,23 +36,20 @@ func NewActionRun(service xcode.XCodeBuildService, exec util.Executor) ActionRun
 	return actionRunTest{xcode: service, exec: exec}
 }
 
-func (a actionRunTest) Run(ctx context.Context, dest string) error {
+func (a actionRunTest) Run(ctx context.Context, dest string, config xcode.Config) error {
 	// Creating a temp folder to contains the test results
 	path, err := tempFileName("dothething", ".xcresult")
 	if err != nil {
 		return err
 	}
 
-	// Run test via xcodebuild
-	_, err = a.runXCodebuildTest(ctx, path, dest)
-	if err != nil {
-		return xcode.ParseXCodeBuildError(err)
-	}
-
-	return nil
+	return xcode.ParseXCodeBuildError(a.runXCodebuildTest(ctx, path, config, dest))
 
 }
-func (a actionRunTest) runXCodebuildTest(ctx context.Context, path string, dest string) (string, error) {
+func (a actionRunTest) runXCodebuildTest(ctx context.Context,
+	path string,
+	config xcode.Config,
+	dest string) error {
 	log.Info().
 		Str("Destination", dest).
 		Str("Output file", path).
@@ -64,7 +61,7 @@ func (a actionRunTest) runXCodebuildTest(ctx context.Context, path string, dest 
 		a.xcode.GetProjectPath(),
 		xcode.ActionClean,
 		xcode.ActionTest,
-		xcode.FlagScheme, "Swiftstraints iOS",
+		xcode.FlagScheme, config.Scheme,
 		xcode.FlagDestination, fmt.Sprintf("id=%s", dest),
 		xcode.FlagResultBundlePath, path,
 		"-showBuildTimingSummary",
@@ -72,12 +69,12 @@ func (a actionRunTest) runXCodebuildTest(ctx context.Context, path string, dest 
 
 	pout, err := cmd.StdoutPipe()
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	perr, err := cmd.StderrPipe()
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	go func() {
@@ -88,14 +85,14 @@ func (a actionRunTest) runXCodebuildTest(ctx context.Context, path string, dest 
 
 	//
 	if err = cmd.Start(); err != nil {
-		return "", err
+		return err
 	}
 
 	if err = cmd.Wait(); err != nil {
-		return "", err
+		return err
 	}
 
-	return "", nil
+	return nil
 }
 
 func (a actionRunTest) decodeXCResultFile(ctx context.Context, path string) ([]byte, error) {
