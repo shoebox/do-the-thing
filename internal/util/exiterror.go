@@ -1,7 +1,6 @@
 package util
 
 import (
-	"fmt"
 	"os/exec"
 	"syscall"
 )
@@ -16,7 +15,6 @@ type ExitErrorWrapper struct {
 var ErrExecutableNotFound = exec.ErrNotFound
 
 func handleError(err error) error {
-	fmt.Println(err)
 	if err == nil {
 		return nil
 	}

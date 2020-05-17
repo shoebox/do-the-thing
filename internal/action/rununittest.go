@@ -3,6 +3,7 @@ package action
 import (
 	"context"
 	"crypto/rand"
+	"dothething/internal/destination"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
 	"dothething/internal/xcode/output"
@@ -11,7 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rs/zerolog/log"
+	"github.com/fatih/color"
 )
 
 const (
@@ -24,7 +25,7 @@ const (
 )
 
 type ActionRunTest interface {
-	Run(ctx context.Context, dest string, config xcode.Config) error
+	Run(ctx context.Context, dest destination.Destination, config xcode.Config) error
 }
 
 type actionRunTest struct {
@@ -36,24 +37,26 @@ func NewActionRun(service xcode.XCodeBuildService, exec util.Executor) ActionRun
 	return actionRunTest{xcode: service, exec: exec}
 }
 
-func (a actionRunTest) Run(ctx context.Context, dest string, config xcode.Config) error {
+func (a actionRunTest) Run(ctx context.Context, d destination.Destination, config xcode.Config) error {
 	// Creating a temp folder to contains the test results
 	path, err := tempFileName("dothething", ".xcresult")
 	if err != nil {
 		return err
 	}
 
-	return xcode.ParseXCodeBuildError(a.runXCodebuildTest(ctx, path, config, dest))
+	xce := xcode.ParseXCodeBuildError(a.runXCodebuildTest(ctx, path, config, d))
+	if xce != nil {
+		color.New(color.FgHiRed, color.Bold).Println(xce.Error())
+	}
+
+	return xce
 
 }
 func (a actionRunTest) runXCodebuildTest(ctx context.Context,
 	path string,
 	config xcode.Config,
-	dest string) error {
-	log.Info().
-		Str("Destination", dest).
-		Str("Output file", path).
-		Msg("Running tests on destination")
+	dest destination.Destination) error {
+	fmt.Println(color.BlueString("Running test on %v (%v)", dest.Name, dest.Id))
 
 	cmd := a.exec.CommandContext(ctx,
 		xcode.XCodeBuild,
@@ -62,7 +65,7 @@ func (a actionRunTest) runXCodebuildTest(ctx context.Context,
 		xcode.ActionClean,
 		xcode.ActionTest,
 		xcode.FlagScheme, config.Scheme,
-		xcode.FlagDestination, fmt.Sprintf("id=%s", dest),
+		xcode.FlagDestination, fmt.Sprintf("id=%s", dest.Id),
 		xcode.FlagResultBundlePath, path,
 		"-showBuildTimingSummary",
 		"CODE_SIGNING_ALLOWED=NO")

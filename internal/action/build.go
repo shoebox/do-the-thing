@@ -6,6 +6,7 @@ import (
 	"dothething/internal/xcode"
 	"dothething/internal/xcode/output"
 
+	"github.com/fatih/color"
 	"github.com/rs/zerolog/log"
 )
 
@@ -23,7 +24,15 @@ type actionBuild struct {
 }
 
 func (a actionBuild) Run(ctx context.Context, config xcode.Config) error {
+	xce := xcode.ParseXCodeBuildError(a.build(ctx, config))
+	if xce != nil {
+		color.New(color.FgHiRed, color.Bold).Println(xce.Error())
+	}
 
+	return xce
+}
+
+func (a actionBuild) build(ctx context.Context, config xcode.Config) error {
 	log.Info().
 		Msg("ActionArchive")
 

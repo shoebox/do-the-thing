@@ -12,29 +12,28 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	zlog "github.com/rs/zerolog/log"
 )
 
 var config xcode.Config
 
 func main() {
 	// logger
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	zlog.Logger = zlog.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-
-	// Context
-	// ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	// defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	//
 	config = xcode.Config{
-		Path:   "/Users/johann.martinache/Desktop/massive/bein/bein-apple/beIN.xcworkspace",
-		Scheme: "beIN_iOS Prod_VIP_Internal",
+		Path:   "/Users/johann.martinache/Desktop/tmp/Swiftstraints/Swiftstraints.xcodeproj",
+		Scheme: "Swiftstraints iOS",
 	}
 	e := util.NewExecutor()
-	xcodeService := xcode.NewService(e, config.Path)
+	x := xcode.NewService(e, config.Path)
 
-	actionArchive(e, xcodeService)
+	// if err := unitTest(e, x); err != nil {
+	//	log.Panicln(err)
+	//}
+	actionBuild(e, x)
 
 	/*
 		f := util.IoUtilFileService{}
@@ -86,17 +85,19 @@ func unitTest(e util.Executor, x xcode.XCodeBuildService) error {
 	if err != nil {
 		return err
 	}
-	defer dest.ShutDown(ctx, dd[len(dd)-1])
 
-	if err := dest.Boot(ctx, dd[len(dd)-1]); err != nil {
+	d := dd[len(dd)-1]
+	defer dest.ShutDown(ctx, d)
+
+	if err := dest.Boot(ctx, d); err != nil {
 		return err
 	}
 
 	a := action.NewActionRun(x, e)
-	return a.Run(ctx, dd[0].Id, config)
+	return a.Run(ctx, d, config)
 }
 
-func actionArchive(e util.Executor, x xcode.XCodeBuildService) error {
+func actionBuild(e util.Executor, x xcode.XCodeBuildService) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
