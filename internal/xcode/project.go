@@ -30,11 +30,11 @@ type ProjectService interface {
 
 // projectService struct definition
 type projectService struct {
-	xcodeService XCodeBuildService
+	xcodeService BuildService
 }
 
 // NewProjectService Create a new instance of the project service
-func NewProjectService(service XCodeBuildService) ProjectService {
+func NewProjectService(service BuildService) ProjectService {
 	return projectService{xcodeService: service}
 }
 

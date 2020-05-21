@@ -16,7 +16,7 @@ type XCodebuildSuite struct {
 	cmd      *utiltest.MockExecutorCmd
 	ctx      context.Context
 	cancel   context.CancelFunc
-	subject  XCodeBuildService
+	subject  BuildService
 	executor *utiltest.MockExecutor
 	path     string
 }
@@ -65,7 +65,7 @@ func (s *XCodebuildSuite) TestListShouldHandleError() {
 
 	s.executor.On("CommandContext",
 		mock.Anything,
-		XCodeBuild,
+		Build,
 		[]string{flagList, flagJSON, "-workspace", s.path}).
 		Return(s.cmd)
 
@@ -84,7 +84,7 @@ func (s *XCodebuildSuite) TestListShouldReturnResult() {
 
 	s.executor.On("CommandContext",
 		mock.Anything,
-		XCodeBuild,
+		Build,
 		[]string{flagList, flagJSON, "-workspace", s.path}).
 		Return(s.cmd)
 
@@ -103,7 +103,7 @@ func (s *XCodebuildSuite) TestShowDestinations() {
 
 	s.executor.On("CommandContext",
 		s.ctx,
-		XCodeBuild,
+		Build,
 		[]string{
 			FlagShowDestinations,
 			FlagWorkspace,

@@ -113,7 +113,7 @@ func (s *projectTestSuite) TestCases() {
 		s.Run(fmt.Sprintf("Test case %v", index), func() {
 			s.SetupTest()
 			s.exec.MockCommandContext(
-				XCodeBuild,
+				Build,
 				[]string{flagList, flagJSON, FlagProject, fakePath},
 				tc.json,
 				tc.execErr)

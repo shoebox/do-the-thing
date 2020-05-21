@@ -71,7 +71,7 @@ func (p provisioningService) decodeProvisioning(ctx context.Context, filePath st
 }
 
 func parseRawX509Certificates(raw [][]byte) ([]*x509.Certificate, error) {
-	certs := []*x509.Certificate{}
+	var certs []*x509.Certificate
 	for _, data := range raw {
 		k, err := x509.ParseCertificate(data)
 		if err != nil {

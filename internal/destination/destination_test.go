@@ -21,7 +21,7 @@ type DestinationTestSuite struct {
 	dest     Destination
 	subject  destinationService
 	executor *utiltest.MockExecutor
-	xcode    xcode.XCodeBuildService
+	xcode    xcode.BuildService
 }
 
 func TestExampleTestSuite(t *testing.T) {
@@ -113,7 +113,7 @@ func (s *DestinationTestSuite) TestList() {
 	s.executor.
 		On("CommandContext",
 			s.ctx,
-			xcode.XCodeBuild,
+			xcode.Build,
 			[]string{
 				xcode.FlagShowDestinations,
 				xcode.FlagProject,

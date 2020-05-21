@@ -72,7 +72,7 @@ func selectService(e util.Executor, l xcode.ListService) error {
 	return nil
 }
 
-func unitTest(e util.Executor, x xcode.XCodeBuildService) error {
+func unitTest(e util.Executor, x xcode.BuildService) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
