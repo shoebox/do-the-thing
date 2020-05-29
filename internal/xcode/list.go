@@ -96,6 +96,7 @@ func (s listService) resolveXcode(path string) (*Install, error) {
 	}
 
 	info := infoPlist{}
+
 	file, err := s.file.OpenAndReadFileContent(abs)
 	if err != nil {
 		return nil, err

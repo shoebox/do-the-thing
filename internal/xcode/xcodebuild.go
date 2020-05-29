@@ -11,9 +11,9 @@ const (
 	Build = "xcodebuild"
 
 	// FlagList list
-	flagList = "-list"
+	FlagList = "-list"
 
-	flagJSON = "-json"
+	FlagJSON = "-json"
 
 	// FlagDestination destination specifier describing the device (or devices) to use as a destination
 	FlagDestination = "-destination"
@@ -78,7 +78,7 @@ func (s xcodeBuildService) GetProjectPath() string {
 
 // List Lists the targets and configurations in a project, or the schemes in a workspace
 func (s xcodeBuildService) List(ctx context.Context) (string, error) {
-	cmd := s.exec.CommandContext(ctx, Build, flagList, flagJSON, s.arg, s.projectPath)
+	cmd := s.exec.CommandContext(ctx, Build, FlagList, FlagJSON, s.arg, s.projectPath)
 	b, err := cmd.Output()
 	if err != nil {
 		return "", ParseXCodeBuildError(err)
