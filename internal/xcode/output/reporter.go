@@ -37,4 +37,6 @@ type reporter interface {
 	ErrorMissing(e LogEntry)
 	ErrorLD(e LogEntry)
 	ErrorUndefinedSymbol(e LogEntry)
+
+	Warning(e LogEntry)
 }
