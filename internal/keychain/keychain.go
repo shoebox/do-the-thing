@@ -159,15 +159,15 @@ func (k keychain) getSearchList(ctx context.Context) ([]string, error) {
 }
 
 func parseSearchList(data []byte) []string {
-	res := []string{}
-	regexp := regexp.MustCompile(`^(?:\t|(?:\s)+)?"(.*)"`)
+	var res []string
+	r := regexp.MustCompile(`^(?:\t|(?:\s)+)?"(.*)"`)
 
 	// Parse each line and try to parse the keychain path
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	for scanner.Scan() {
 		txt := scanner.Text()
-		if regexp.MatchString(txt) {
-			sm := regexp.FindStringSubmatch(txt)
+		if r.MatchString(txt) {
+			sm := r.FindStringSubmatch(txt)
 			res = append(res, sm[1])
 		}
 	}

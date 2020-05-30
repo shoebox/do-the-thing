@@ -74,7 +74,7 @@ func (s *selectService) findMatch(
 	}
 
 	// Iterate on installs
-	var installs = []*Install{}
+	var installs []*Install
 	for _, install := range list {
 		res, err := valid(install, requirement)
 		if err != nil {

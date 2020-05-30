@@ -29,10 +29,10 @@ type ActionRunTest interface {
 
 type actionRunTest struct {
 	exec  util.Executor
-	xcode xcode.XCodeBuildService
+	xcode xcode.BuildService
 }
 
-func NewActionRun(service xcode.XCodeBuildService, exec util.Executor) ActionRunTest {
+func NewActionRun(service xcode.BuildService, exec util.Executor) ActionRunTest {
 	return actionRunTest{xcode: service, exec: exec}
 }
 
@@ -59,7 +59,7 @@ func (a actionRunTest) runXCodebuildTest(ctx context.Context, path string, dest 
 		Msg("Running tests on destination")
 
 	cmd := a.exec.CommandContext(ctx,
-		xcode.XCodeBuild,
+		xcode.Build,
 		a.xcode.GetArg(),
 		a.xcode.GetProjectPath(),
 		xcode.ActionClean,

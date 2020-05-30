@@ -153,7 +153,7 @@ func TestDecode(t *testing.T) {
 	// then:
 	assert.NoError(t, err)
 	assert.Equal(t, "abc.def.ghi", pp.AppID)
-	assert.Equal(t, []string([]string{"12345ABCDE"}), pp.TeamIdentifier)
+	assert.Equal(t, []string{"12345ABCDE"}, pp.TeamIdentifier)
 	assert.Equal(t, "Selfsigners united", pp.TeamName)
 	assert.Equal(t, "B5C2906D-D6EE-476E-AF17-D99AE14644AA", pp.UUID)
 	assert.NoError(t, err)
@@ -204,7 +204,7 @@ func TestDecodeCertShouldHandleDecodingErrors(t *testing.T) {
 
 	// and:
 	assert.Equal(t, "abc.def.ghi", pp.AppID)
-	assert.Equal(t, []string([]string{"12345ABCDE"}), pp.TeamIdentifier)
+	assert.Equal(t, []string{"12345ABCDE"}, pp.TeamIdentifier)
 	assert.Equal(t, "Selfsigners united", pp.TeamName)
 	assert.Equal(t, "B5C2906D-D6EE-476E-AF17-D99AE14644AA", pp.UUID)
 }

@@ -34,19 +34,19 @@ type Destination struct {
 }
 
 // DestinationService destination service definition
-type DestinationService interface {
+type Service interface {
 	Boot(ctx context.Context, d Destination) error
 	List(ctx context.Context, scheme string) ([]Destination, error)
 	ShutDown(ctx context.Context, d Destination) error
 }
 
 type destinationService struct {
-	xcode xcode.XCodeBuildService
+	xcode xcode.BuildService
 	exec  util.Executor
 }
 
 // NewDestinationService Create a new instance of the project service
-func NewDestinationService(service xcode.XCodeBuildService, exec util.Executor) DestinationService {
+func NewDestinationService(service xcode.BuildService, exec util.Executor) Service {
 	return destinationService{exec: exec, xcode: service}
 }
 
@@ -86,7 +86,7 @@ func (s destinationService) List(ctx context.Context, scheme string) ([]Destinat
 
 func (s destinationService) parseDestinations(data string) []Destination {
 	// Result
-	res := []Destination{}
+	var res []Destination
 
 	sc := bufio.NewScanner(strings.NewReader(data))
 	start := false

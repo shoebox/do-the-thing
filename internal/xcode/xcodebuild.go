@@ -8,12 +8,12 @@ import (
 
 const (
 	// XCodeBuild executable
-	XCodeBuild = "xcodebuild"
+	Build = "xcodebuild"
 
 	// FlagList list
-	flagList = "-list"
+	FlagList = "-list"
 
-	flagJSON = "-json"
+	FlagJSON = "-json"
 
 	// FlagDestination destination specifier describing the device (or devices) to use as a destination
 	FlagDestination = "-destination"
@@ -46,7 +46,7 @@ const (
 )
 
 // XCodeBuildService service definition
-type XCodeBuildService interface {
+type BuildService interface {
 	List(ctx context.Context) (string, error)
 	ShowDestinations(ctx context.Context, scheme string) (string, error)
 	GetArg() string
@@ -60,7 +60,7 @@ type xcodeBuildService struct {
 }
 
 // NewService creates a new instance of the xcodebuild service
-func NewService(exec util.Executor, projectPath string) XCodeBuildService {
+func NewService(exec util.Executor, projectPath string) BuildService {
 	arg := FlagProject
 	if filepath.Ext(projectPath) == ".xcworkspace" {
 		arg = FlagWorkspace
@@ -78,7 +78,7 @@ func (s xcodeBuildService) GetProjectPath() string {
 
 // List Lists the targets and configurations in a project, or the schemes in a workspace
 func (s xcodeBuildService) List(ctx context.Context) (string, error) {
-	cmd := s.exec.CommandContext(ctx, XCodeBuild, flagList, flagJSON, s.arg, s.projectPath)
+	cmd := s.exec.CommandContext(ctx, Build, FlagList, FlagJSON, s.arg, s.projectPath)
 	b, err := cmd.Output()
 	if err != nil {
 		return "", ParseXCodeBuildError(err)
@@ -89,7 +89,7 @@ func (s xcodeBuildService) List(ctx context.Context) (string, error) {
 
 func (s xcodeBuildService) ShowDestinations(ctx context.Context, scheme string) (string, error) {
 	cmd := s.exec.CommandContext(ctx,
-		XCodeBuild,
+		Build,
 		FlagShowDestinations,
 		s.arg,
 		s.projectPath,

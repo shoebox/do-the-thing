@@ -16,7 +16,7 @@ const (
 	MdFind = "mdfind"
 
 	// XCodeBundleIdentifier What spotlight should look for to identify Xcode installs
-	XCodeBundleIdentifier = "kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'"
+	BundleIdentifier = "kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'"
 
 	// ContentPListFile path to the Info plist file in to the Xcode app bundle
 	ContentPListFile = "/Contents/Info.plist"
@@ -56,11 +56,11 @@ func (s listService) List(ctx context.Context) ([]*Install, error) {
 }
 
 func (s listService) spotlightSearch(ctx context.Context) ([]byte, error) {
-	return s.exec.CommandContext(ctx, MdFind, XCodeBundleIdentifier).Output()
+	return s.exec.CommandContext(ctx, MdFind, BundleIdentifier).Output()
 }
 
 func (s listService) parseSpotlightSearchResult(reader io.Reader) ([]*Install, error) {
-	result := []*Install{}
+	var result []*Install
 	scanner := bufio.NewScanner(reader)
 
 	for scanner.Scan() {
@@ -96,6 +96,7 @@ func (s listService) resolveXcode(path string) (*Install, error) {
 	}
 
 	info := infoPlist{}
+
 	file, err := s.file.OpenAndReadFileContent(abs)
 	if err != nil {
 		return nil, err

@@ -57,7 +57,7 @@ func (s *XCodeListTestSuite) TestOpenFileContent() {
 	// setup:
 	s.mockReturn(
 		MdFind,
-		[]string{XCodeBundleIdentifier},
+		[]string{BundleIdentifier},
 		"Hello world",
 		nil,
 	)
@@ -80,14 +80,14 @@ func (s *XCodeListTestSuite) mockReturn(cmd string, arg []string, res string, er
 	s.mockExec.
 		On("CommandContext",
 			mock.Anything,
-			MdFind, []string{XCodeBundleIdentifier}).
+			MdFind, []string{BundleIdentifier}).
 		Return(s.cmd)
 }
 
 func (s *XCodeListTestSuite) TestSpotLightFailure() {
 	s.mockReturn(
 		MdFind,
-		[]string{XCodeBundleIdentifier},
+		[]string{BundleIdentifier},
 		"",
 		fmt.Errorf("Error"),
 	)
@@ -141,7 +141,7 @@ func (s *XCodeListTestSuite) TestParseSpotLightSearchResults() {
 	s.mockExec.On("CommandContext",
 		mock.Anything,
 		MdFind,
-		[]string{XCodeBundleIdentifier}).Return(s.cmd)
+		[]string{BundleIdentifier}).Return(s.cmd)
 
 	// when:
 	cases := []struct {
@@ -226,7 +226,7 @@ func (s *XCodeListTestSuite) TestListShouldHandleError() {
 	s.mockExec.On("CommandContext",
 		mock.Anything,
 		MdFind,
-		[]string{XCodeBundleIdentifier}).Return(s.cmd)
+		[]string{BundleIdentifier}).Return(s.cmd)
 
 	// when:
 	installs, err := s.service.List(s.ctx)
@@ -256,14 +256,14 @@ func (s XCodeListTestSuite) TestListShouldParseResults() {
 	s.mockExec.On("CommandContext",
 		mock.Anything,
 		MdFind,
-		[]string{XCodeBundleIdentifier}).Return(s.cmd)
+		[]string{BundleIdentifier}).Return(s.cmd)
 
 	// when:
 	installs, err := s.service.List(s.ctx)
 
 	// then:
 	s.Assert().NoError(err)
-	s.Assert().EqualValues([]*Install{&Install{
+	s.Assert().EqualValues([]*Install{{
 		Path:          path,
 		BundleVersion: version,
 		Version:       fmt.Sprintf("%v-snapshot", version),

@@ -17,10 +17,6 @@ func SetupMockExec() {
 	exec = new(MockExec)
 }
 
-func TearDownMockExec() {
-	exec = nil
-}
-
 // ContextExec mock execute the program with the provided arguments and context
 func (m *MockExec) ContextExec(ctx context.Context,
 	name string,
