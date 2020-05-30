@@ -12,6 +12,7 @@ type LogEntry struct {
 	Error             string
 	FileName          string
 	FilePath          string
+	Message           string
 	Name              string
 	Path              string
 	Project           string
