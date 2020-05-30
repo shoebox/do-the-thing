@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	IActionClean             = "clean"                             // ActionClean Remove build products and intermediate files from the build root
+	ActionClean             = "clean"                             // ActionClean Remove build products and intermediate files from the build root
 	ActionTest              = "test"                              // ActionTest Test a scheme from the build root
 	Cmd                     = "xcodebuild"                        // XCodeBuild executable
 	FlagDestination         = "-destination"                      // FlagDestination destination specifier describing the device (or devices) to use as a destination
