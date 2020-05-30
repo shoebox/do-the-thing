@@ -8,7 +8,6 @@ import (
 	"dothething/internal/xcode/pbx"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"path/filepath"
 )
 
@@ -16,6 +15,8 @@ var (
 	// ErrInvalidConfig The xcodebuild answer was not valid
 	ErrInvalidConfig = errors.New("Invalid xcodedbuild list response")
 )
+
+type ReadFile func(path string) ([]byte, error)
 
 // Project datas
 type Project struct {
@@ -33,6 +34,7 @@ type ProjectService interface {
 
 // projectService struct definition
 type projectService struct {
+	reader       ReadFile
 	xcodeService xcode.BuildService
 	exec         util.Executor
 }
@@ -43,8 +45,8 @@ type list struct {
 }
 
 // NewProjectService Create a new instance of the PBXProj service
-func NewProjectService(service xcode.BuildService, e util.Executor) ProjectService {
-	return projectService{service, e}
+func NewProjectService(r ReadFile, bs xcode.BuildService, e util.Executor) ProjectService {
+	return projectService{r, bs, e}
 }
 
 // Parse the PBXProj raw project into a more friendly version
@@ -85,10 +87,10 @@ func (s projectService) decodeProject(b []byte) (pbx.PBXProject, error) {
 func (s projectService) resolvePbxProj() ([]byte, error) {
 	path, err := filepath.Abs(s.xcodeService.GetProjectPath() + "/project.pbxproj")
 	if err != nil {
-		return nil, err
+		return []byte{}, err
 	}
 
-	return ioutil.ReadFile(path)
+	return s.reader(path)
 }
 
 func (s projectService) resolveProject(ctx context.Context) (Project, error) {

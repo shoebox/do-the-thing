@@ -18,6 +18,25 @@ import (
 
 var ps projectService
 
+func TestResolvePbxProj(t *testing.T) {
+	// setup:
+	path := "/path/to/project/test.xcodeproj"
+	fr := func(path string) ([]byte, error) {
+		assert.EqualValues(t, "/path/to/project/test.xcodeproj/project.pbxproj", path)
+		return []byte("test response"), nil
+	}
+
+	subject := projectService{
+		reader:       fr,
+		xcodeService: xcode.NewService(new(utiltest.MockExecutor), path),
+	}
+
+	// when:
+	b, err := subject.resolvePbxProj()
+	assert.NoError(t, err)
+	assert.EqualValues(t, []byte("test response"), b)
+}
+
 func TestParsing(t *testing.T) {
 	// setup:
 	f, err := os.Open("testdata/project.pbxproj")

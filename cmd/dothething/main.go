@@ -9,6 +9,7 @@ import (
 	"dothething/internal/xcode"
 	"dothething/internal/xcode/project"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"time"
 
@@ -33,17 +34,17 @@ func main() {
 	// path := "/Users/johann.martinache/Desktop/tmp/Swiftstraints/Swiftstraints.xcodeproj"
 	path := "/Users/johann.martinache/Desktop/massive/bein/bein-apple/beIN.xcodeproj"
 
-	f := util.IoUtilFileService{}
+	// f := util.IoUtilFileService{}
 	e := util.NewExecutor()
 	xcb = xcode.NewService(e, path)
-	pj = project.NewProjectService(xcb, e)
+	pj = project.NewProjectService(ioutil.ReadFile, xcb, e)
 	prj, err := pj.Parse(ctx)
 	fmt.Printf("Project %#v %v\n", prj, err)
 	fmt.Printf("Project %#v %v\n", prj.Schemes, err)
 
 	// List service
-	listService := xcode.NewXCodeListService(e, f)
-	fmt.Println(listService)
+	//listService := xcode.NewXCodeListService(e, f)
+	//fmt.Println(listService)
 	//listService.List(ctx)
 
 	/*
