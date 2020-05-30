@@ -4,7 +4,6 @@ import (
 	"context"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
-	"dothething/internal/xcode/output"
 
 	"github.com/fatih/color"
 	"github.com/rs/zerolog/log"
@@ -34,8 +33,7 @@ func (a actionBuild) Run(ctx context.Context, config xcode.Config) error {
 
 func (a actionBuild) build(ctx context.Context, config xcode.Config) error {
 	log.Info().Msg("Building")
-
-	cmd := a.exec.CommandContext(ctx,
+	return RunCmd(a.exec.CommandContext(ctx,
 		xcode.Cmd,
 		a.xcode.GetArg(),
 		a.xcode.GetProjectPath(),
@@ -43,32 +41,5 @@ func (a actionBuild) build(ctx context.Context, config xcode.Config) error {
 		"build",
 		xcode.FlagScheme, config.Scheme,
 		"-showBuildTimingSummary",
-		"CODE_SIGNING_ALLOWED=NO")
-
-	pout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-
-	perr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		f := output.NewFormatter(output.SimpleReporter{})
-		f.Parse(pout)
-		f.Parse(perr)
-	}()
-
-	//
-	if err = cmd.Start(); err != nil {
-		return err
-	}
-
-	if err = cmd.Wait(); err != nil {
-		return err
-	}
-
-	return nil
+		"CODE_SIGNING_ALLOWED=NO"))
 }
