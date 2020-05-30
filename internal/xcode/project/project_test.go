@@ -166,7 +166,7 @@ func TestCases(t *testing.T) {
 			}
 
 			exec.MockCommandContext(
-				xcode.Build,
+				xcode.Cmd,
 				[]string{xcode.FlagList, xcode.FlagJSON, xcode.FlagProject, fakePath},
 				raw,
 				tc.execErr)

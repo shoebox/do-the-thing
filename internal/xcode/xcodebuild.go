@@ -8,7 +8,7 @@ import (
 
 const (
 	// XCodeBuild executable
-	Build = "xcodebuild"
+	Cmd = "xcodebuild"
 
 	// FlagList list
 	FlagList = "-list"
@@ -78,7 +78,7 @@ func (s xcodeBuildService) GetProjectPath() string {
 
 // List Lists the targets and configurations in a project, or the schemes in a workspace
 func (s xcodeBuildService) List(ctx context.Context) (string, error) {
-	cmd := s.exec.CommandContext(ctx, Build, FlagList, FlagJSON, s.arg, s.projectPath)
+	cmd := s.exec.CommandContext(ctx, Cmd, FlagList, FlagJSON, s.arg, s.projectPath)
 	b, err := cmd.Output()
 	if err != nil {
 		return "", ParseXCodeBuildError(err)
@@ -89,7 +89,7 @@ func (s xcodeBuildService) List(ctx context.Context) (string, error) {
 
 func (s xcodeBuildService) ShowDestinations(ctx context.Context, scheme string) (string, error) {
 	cmd := s.exec.CommandContext(ctx,
-		Build,
+		Cmd,
 		FlagShowDestinations,
 		s.arg,
 		s.projectPath,

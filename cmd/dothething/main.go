@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"dothething/internal/action/unittest"
+	"dothething/internal/action"
 	"dothething/internal/destination"
 	"dothething/internal/keychain"
 	"dothething/internal/util"
@@ -17,6 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var config xcode.Config
 var xcb xcode.BuildService
 var listService xcode.ListService
 var pj project.ProjectService
@@ -30,17 +31,24 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
+	config = xcode.Config{
+		Path:   "/Users/johann.martinache/Desktop/tmp/Swiftstraints/Swiftstraints.xcodeproj",
+		Scheme: "Swiftstraints iOS",
+	}
+
 	//
 	// path := "/Users/johann.martinache/Desktop/tmp/Swiftstraints/Swiftstraints.xcodeproj"
-	path := "/Users/johann.martinache/Desktop/massive/bein/bein-apple/beIN.xcodeproj"
+	//path := "/Users/johann.martinache/Desktop/massive/bein/bein-apple/beIN.xcodeproj"
 
 	// f := util.IoUtilFileService{}
 	e := util.NewExecutor()
-	xcb = xcode.NewService(e, path)
+	xcb = xcode.NewService(e, config.Path)
 	pj = project.NewProjectService(ioutil.ReadFile, xcb, e)
 	prj, err := pj.Parse(ctx)
 	fmt.Printf("Project %#v %v\n", prj, err)
 	fmt.Printf("Project %#v %v\n", prj.Schemes, err)
+
+	unitTest(e, xcb)
 
 	// List service
 	//listService := xcode.NewXCodeListService(e, f)
@@ -95,14 +103,16 @@ func unitTest(e util.Executor, x xcode.BuildService) error {
 	if err != nil {
 		return err
 	}
-	defer dest.ShutDown(ctx, dd[len(dd)-1])
 
-	if err := dest.Boot(ctx, dd[len(dd)-1]); err != nil {
+	d := dd[len(dd)-1]
+	defer dest.ShutDown(ctx, d)
+
+	if err := dest.Boot(ctx, d); err != nil {
 		return err
 	}
 
-	a := unittest.NewActionRun(x, e)
-	return a.Run(ctx, dd[0].Id)
+	a := action.NewActionRun(x, e)
+	return a.Run(ctx, d, config)
 }
 
 func keychainTest(e util.Executor) error {

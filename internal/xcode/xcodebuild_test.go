@@ -65,7 +65,7 @@ func (s *XCodebuildSuite) TestListShouldHandleError() {
 
 	s.executor.On("CommandContext",
 		mock.Anything,
-		Build,
+		Cmd,
 		[]string{FlagList, FlagJSON, "-workspace", s.path}).
 		Return(s.cmd)
 
@@ -84,7 +84,7 @@ func (s *XCodebuildSuite) TestListShouldReturnResult() {
 
 	s.executor.On("CommandContext",
 		mock.Anything,
-		Build,
+		Cmd,
 		[]string{FlagList, FlagJSON, "-workspace", s.path}).
 		Return(s.cmd)
 
@@ -103,7 +103,7 @@ func (s *XCodebuildSuite) TestShowDestinations() {
 
 	s.executor.On("CommandContext",
 		s.ctx,
-		Build,
+		Cmd,
 		[]string{
 			FlagShowDestinations,
 			FlagWorkspace,

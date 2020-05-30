@@ -1,8 +1,11 @@
 package util
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 )
 
 type FileService interface {
@@ -31,4 +34,14 @@ func (f IoUtilFileService) IsDir(path string) (bool, error) {
 	}
 
 	return stat.IsDir(), nil
+}
+
+// TempFileName Generate a temporary file path
+func TempFileName(prefix, suffix string) (string, error) {
+	randBytes := make([]byte, 16)
+	if _, err := rand.Read(randBytes); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(os.TempDir(), prefix+hex.EncodeToString(randBytes)+suffix), nil
 }
