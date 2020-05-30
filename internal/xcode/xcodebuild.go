@@ -7,6 +7,8 @@ import (
 )
 
 const (
+	ActionArchive           = "archive"                           // ActionArchive
+	ActionBuild             = "build"                             // ActionBuild
 	ActionClean             = "clean"                             // ActionClean Remove build products and intermediate files from the build root
 	ActionTest              = "test"                              // ActionTest Test a scheme from the build root
 	Cmd                     = "xcodebuild"                        // XCodeBuild executable

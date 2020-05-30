@@ -9,20 +9,20 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type ActionBuild interface {
+type ActionArchive interface {
 	Run(ctx context.Context, config xcode.Config) error
 }
 
-func NewBuild(xcode xcode.BuildService, exec util.Executor) ActionBuild {
-	return actionBuild{exec, xcode}
+func NewArchive(xcode xcode.BuildService, exec util.Executor) ActionArchive {
+	return actionArchive{exec, xcode}
 }
 
-type actionBuild struct {
+type actionArchive struct {
 	exec  util.Executor
 	xcode xcode.BuildService
 }
 
-func (a actionBuild) Run(ctx context.Context, config xcode.Config) error {
+func (a actionArchive) Run(ctx context.Context, config xcode.Config) error {
 	xce := xcode.ParseXCodeBuildError(a.build(ctx, config))
 	if xce != nil {
 		color.New(color.FgHiRed, color.Bold).Println(xce.Error())
@@ -31,14 +31,13 @@ func (a actionBuild) Run(ctx context.Context, config xcode.Config) error {
 	return xce
 }
 
-func (a actionBuild) build(ctx context.Context, config xcode.Config) error {
-	log.Info().Msg("Building")
+func (a actionArchive) build(ctx context.Context, config xcode.Config) error {
+	log.Info().Msg("Archiving")
 	return RunCmd(a.exec.CommandContext(ctx,
 		xcode.Cmd,
 		a.xcode.GetArg(),
 		a.xcode.GetProjectPath(),
-		xcode.ActionBuild,
+		xcode.ActionArchive,
 		xcode.FlagScheme, config.Scheme,
-		"-showBuildTimingSummary",
 		"CODE_SIGNING_ALLOWED=NO"))
 }

@@ -50,7 +50,8 @@ func main() {
 	fmt.Printf("Project %#v %v\n", prj.Schemes, err)
 
 	build()
-	unitTest(e, xcb)
+	archive()
+	// unitTest(e, xcb)
 
 	// List service
 	//listService := xcode.NewXCodeListService(e, f)
@@ -101,6 +102,14 @@ func build() {
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	a := action.NewBuild(xcb, e)
+	a.Run(ctx, config)
+}
+
+func archive() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
+
+	a := action.NewArchive(xcb, e)
 	a.Run(ctx, config)
 }
 
