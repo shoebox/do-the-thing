@@ -10,15 +10,6 @@ import (
 	"github.com/fatih/color"
 )
 
-const (
-	xCRun      string = "xcrun"
-	resultTool string = "xcresulttool"
-	actionGet  string = "get"
-	flagFormat string = "--format"
-	formatJson string = "json"
-	flagPath   string = "--path"
-)
-
 type ActionRunTest interface {
 	Run(ctx context.Context, dest destination.Destination, config xcode.Config) error
 }
@@ -64,13 +55,4 @@ func (a actionRunTest) runXCodebuildTest(ctx context.Context,
 		xcode.FlagResultBundlePath, path,
 		"-showBuildTimingSummary",
 		"CODE_SIGNING_ALLOWED=NO"))
-}
-
-func (a actionRunTest) decodeXCResultFile(ctx context.Context, path string) ([]byte, error) {
-	return a.exec.CommandContext(ctx,
-		xCRun, resultTool,
-		actionGet,
-		flagFormat, formatJson,
-		flagPath, path,
-	).Output()
 }

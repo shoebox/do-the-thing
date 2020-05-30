@@ -37,7 +37,6 @@ func (a actionBuild) build(ctx context.Context, config xcode.Config) error {
 		xcode.Cmd,
 		a.xcode.GetArg(),
 		a.xcode.GetProjectPath(),
-		xcode.ActionClean,
 		"build",
 		xcode.FlagScheme, config.Scheme,
 		"-showBuildTimingSummary",
