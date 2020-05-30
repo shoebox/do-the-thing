@@ -5,7 +5,6 @@ import (
 	"dothething/internal/destination"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
-	"dothething/internal/xcode/output"
 	"fmt"
 
 	"github.com/fatih/color"
@@ -54,7 +53,7 @@ func (a actionRunTest) runXCodebuildTest(ctx context.Context,
 	dest destination.Destination) error {
 	fmt.Println(color.BlueString("Running test on %v (%v)", dest.Name, dest.Id))
 
-	cmd := a.exec.CommandContext(ctx,
+	return RunCmd(a.exec.CommandContext(ctx,
 		xcode.Cmd,
 		a.xcode.GetArg(),
 		a.xcode.GetProjectPath(),
@@ -64,34 +63,7 @@ func (a actionRunTest) runXCodebuildTest(ctx context.Context,
 		xcode.FlagDestination, fmt.Sprintf("id=%s", dest.Id),
 		xcode.FlagResultBundlePath, path,
 		"-showBuildTimingSummary",
-		"CODE_SIGNING_ALLOWED=NO")
-
-	pout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-
-	perr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		f := output.NewFormatter(output.SimpleReporter{})
-		f.Parse(pout)
-		f.Parse(perr)
-	}()
-
-	//
-	if err = cmd.Start(); err != nil {
-		return err
-	}
-
-	if err = cmd.Wait(); err != nil {
-		return err
-	}
-
-	return nil
+		"CODE_SIGNING_ALLOWED=NO"))
 }
 
 func (a actionRunTest) decodeXCResultFile(ctx context.Context, path string) ([]byte, error) {

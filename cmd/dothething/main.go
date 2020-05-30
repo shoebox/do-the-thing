@@ -21,6 +21,7 @@ var config xcode.Config
 var xcb xcode.BuildService
 var listService xcode.ListService
 var pj project.ProjectService
+var e util.Executor
 
 func main() {
 	// logger
@@ -41,13 +42,14 @@ func main() {
 	//path := "/Users/johann.martinache/Desktop/massive/bein/bein-apple/beIN.xcodeproj"
 
 	// f := util.IoUtilFileService{}
-	e := util.NewExecutor()
+	e = util.NewExecutor()
 	xcb = xcode.NewService(e, config.Path)
 	pj = project.NewProjectService(ioutil.ReadFile, xcb, e)
 	prj, err := pj.Parse(ctx)
 	fmt.Printf("Project %#v %v\n", prj, err)
 	fmt.Printf("Project %#v %v\n", prj.Schemes, err)
 
+	build()
 	unitTest(e, xcb)
 
 	// List service
@@ -92,6 +94,14 @@ func selectService(e util.Executor, l xcode.ListService) error {
 
 	fmt.Println("XCode instance : ", res, err)
 	return nil
+}
+
+func build() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
+
+	a := action.NewBuild(xcb, e)
+	a.Run(ctx, config)
 }
 
 func unitTest(e util.Executor, x xcode.BuildService) error {
