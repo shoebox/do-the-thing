@@ -27,6 +27,22 @@ type Project struct {
 	Targets        []string `json:"targets"`
 }
 
+func (p Project) ValidateConfiguration(c xcode.Config) error {
+	found := false
+	for _, s := range p.Schemes {
+		if s == c.Scheme {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return errors.New("Invalid scheme for the project")
+	}
+
+	return nil
+}
+
 // ProjectService interface
 type ProjectService interface {
 	Parse(ctx context.Context) (Project, error)

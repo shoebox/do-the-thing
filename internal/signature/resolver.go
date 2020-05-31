@@ -2,7 +2,9 @@ package signature
 
 import (
 	"context"
-	"dothething/internal/config"
+	"dothething/internal/xcode"
+	"dothething/internal/xcode/pbx"
+	"dothething/internal/xcode/project"
 	"fmt"
 	"io"
 	"os"
@@ -13,7 +15,7 @@ import (
 )
 
 type SignatureResolver interface {
-	Resolve(ctx context.Context, c config.Config)
+	Resolve(ctx context.Context, c xcode.Config, p project.Project)
 }
 
 func NewSignatureResolver(p ProvisioningService) SignatureResolver {
@@ -30,12 +32,32 @@ func isProvisioningFile(info os.FileInfo) bool {
 		strings.HasSuffix(info.Name(), ".mobileprovision")
 }
 
-func (r signatureResolver) Resolve(ctx context.Context, c config.Config) {
+func (r signatureResolver) Resolve(ctx context.Context, c xcode.Config, p project.Project) {
 	// TODO: Temp test path
-	pps := r.resolveProvisioningFilesInFolder(ctx, c.CodeSignOption.Path)
-	for _, pp := range pps {
-		fmt.Println(pp.Name)
+	//pps := r.resolveProvisioningFilesInFolder(ctx, c.CodeSignOption.Path)
+
+	var nativeTarget pbx.NativeTarget
+	for _, tgt := range p.Pbx.Targets {
+		if tgt.Name == c.Target {
+			nativeTarget = tgt
+			break
+		}
 	}
+
+	var bc pbx.XCBuildConfiguration
+	for _, b := range nativeTarget.BuildConfigurationList.BuildConfiguration {
+		if b.Name == c.Configuration {
+			bc = b
+			break
+		}
+	}
+	team := bc.BuildSettings["DEVELOPMENT_TEAM"]
+	pbi := bc.BuildSettings["PRODUCT_BUNDLE_IDENTIFIER"]
+	fmt.Println(team, pbi)
+
+	//for _, pp := range pps {
+	//	fmt.Println(pp.Entitlements.AppID)
+	//}
 }
 
 func (r signatureResolver) resolveProvisioningFilesInFolder(ctx context.Context, root string) []ProvisioningProfile {

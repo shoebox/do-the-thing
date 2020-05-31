@@ -5,6 +5,7 @@ import (
 	"dothething/internal/action"
 	"dothething/internal/destination"
 	"dothething/internal/keychain"
+	"dothething/internal/signature"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
 	"dothething/internal/xcode/project"
@@ -19,9 +20,11 @@ import (
 
 var config xcode.Config
 var xcb xcode.BuildService
-var listService xcode.ListService
-var pj project.ProjectService
-var e util.Executor
+var serviceList xcode.ListService
+var serviceProject project.ProjectService
+var serviceProvisioning signature.ProvisioningService
+var executor util.Executor
+var targetProject project.Project
 
 func main() {
 	// logger
@@ -33,8 +36,15 @@ func main() {
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	config = xcode.Config{
-		Path:   "/Users/johann.martinache/Desktop/tmp/Swiftstraints/Swiftstraints.xcodeproj",
-		Scheme: "Swiftstraints iOS",
+		// Path:   "/Users/johann.martinache/Desktop/tmp/Swiftstraints/Swiftstraints.xcodeproj",
+		// Scheme: "Swiftstraints iOS",
+		Configuration: "Prod_Internal_Mena_Release",
+		Path:          "/Users/johann.martinache/Desktop/massive/bein/bein-apple/beIN.xcodeproj",
+		Scheme:        "beIN_iOS Prod_Internal_Mena",
+		Target:        "beIN_iOS",
+		CodeSignOption: xcode.SignConfig{
+			Path: "/Users/johann.martinache/Desktop/massive/bein/bein-apple/distribution/mobileprovision",
+		},
 	}
 
 	//
@@ -42,15 +52,18 @@ func main() {
 	//path := "/Users/johann.martinache/Desktop/massive/bein/bein-apple/beIN.xcodeproj"
 
 	// f := util.IoUtilFileService{}
-	e = util.NewExecutor()
-	xcb = xcode.NewService(e, config.Path)
-	pj = project.NewProjectService(ioutil.ReadFile, xcb, e)
-	prj, err := pj.Parse(ctx)
-	fmt.Printf("Project %#v %v\n", prj, err)
-	fmt.Printf("Project %#v %v\n", prj.Schemes, err)
+	executor = util.NewExecutor()
+	xcb = xcode.NewService(executor, config.Path)
+	serviceProject = project.NewProjectService(ioutil.ReadFile, xcb, executor)
+	serviceProvisioning = signature.NewProvisioningService(executor)
 
-	build()
-	archive()
+	var err error
+	targetProject, err = serviceProject.Parse(ctx)
+	fmt.Printf("Project %#v %v\n", targetProject.Name, err)
+
+	resolveSignature()
+	//build()
+	//archive()
 	// unitTest(e, xcb)
 
 	// List service
@@ -83,6 +96,20 @@ func main() {
 	*/
 }
 
+func resolveSignature() {
+	// serviceProject.ValidateConfiguration(config)
+
+	if err := targetProject.ValidateConfiguration(config); err != nil {
+		fmt.Println("Err ::", err)
+		log.Panic().AnErr("Error", err)
+
+		return
+	}
+
+	resolver := signature.NewSignatureResolver(serviceProvisioning)
+	resolver.Resolve(context.Background(), config, targetProject)
+}
+
 func selectService(e util.Executor, l xcode.ListService) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
@@ -101,7 +128,7 @@ func build() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	a := action.NewBuild(xcb, e)
+	a := action.NewBuild(xcb, executor)
 	a.Run(ctx, config)
 }
 
@@ -109,7 +136,7 @@ func archive() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	a := action.NewArchive(xcb, e)
+	a := action.NewArchive(xcb, executor)
 	a.Run(ctx, config)
 }
 

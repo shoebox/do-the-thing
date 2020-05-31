@@ -9,12 +9,19 @@ import (
 )
 
 type ProvisioningProfile struct {
-	AppID           string   `plist:"AppIDName"`
-	RawCertificates [][]byte `plist:"DeveloperCertificates"`
+	Name            string       `plist:"Name"`
+	RawCertificates [][]byte     `plist:"DeveloperCertificates"`
+	Entitlements    Entitlements `plist:"Entitlements"`
 	Certificates    []*x509.Certificate
-	TeamIdentifier  []string `plist:"TeamIdentifier"`
-	TeamName        string   `plist:"TeamName"`
-	UUID            string   `plist:"UUID"`
+	TeamName        string `plist:"TeamName"`
+	UUID            string `plist:"UUID"`
+}
+
+type Entitlements struct {
+	AccessGroup string `json:"keychain-access-groups"`
+	Aps         string `json:"aps-environment"`
+	AppID       string `plist:"application-identifier"`
+	TeamID      string `plist:"com.apple.developer.team-identifier"`
 }
 
 const (
@@ -30,14 +37,14 @@ var (
 )
 
 type ProvisioningService interface {
-	Decode(ctx context.Context, filePath string)
+	Decode(ctx context.Context, filePath string) (ProvisioningProfile, error)
 }
 
 type provisioningService struct {
 	util.Executor
 }
 
-func NewProvisioningService(e util.Executor) provisioningService {
+func NewProvisioningService(e util.Executor) ProvisioningService {
 	return provisioningService{Executor: e}
 }
 
@@ -71,7 +78,7 @@ func (p provisioningService) decodeProvisioning(ctx context.Context, filePath st
 }
 
 func parseRawX509Certificates(raw [][]byte) ([]*x509.Certificate, error) {
-	var certs []*x509.Certificate
+	certs := []*x509.Certificate{}
 	for _, data := range raw {
 		k, err := x509.ParseCertificate(data)
 		if err != nil {

@@ -5,7 +5,10 @@ type Config struct {
 	Configuration  string
 	Path           string
 	CodeSign       bool
-	CodeSignOption struct {
-		Path string
-	}
+	CodeSignOption SignConfig
+	Target         string
+}
+
+type SignConfig struct {
+	Path string
 }
