@@ -9,19 +9,23 @@ import (
 var subject pbxConvertor
 
 func TestVariableResolution(t *testing.T) {
-	// setup:
 	m := map[string]string{
-		"key1":  "value1",
-		"key2":  "VALUE2",
-		"key3":  "$(key2)",
-		"entry": "$(key1:upper):$(key2:lower):$(key2:lower)",
+		"BUNDLE_ID_BASE_NESTED":   "$(BUNDLE_ID_SUFFIX)",
+		"BUNDLE_ID_BASE":          "toto",
+		"BUNDLE_ID_APPNAME":       ".appname",
+		"BUNDLE_ID_SIGNATURE":     ".sign",
+		"BUNDLE_ID_SUFFIX":        ".suffix",
+		"BUNDLE_ID_SUFFIX_NESTED": "$(BUNDLE_ID_SUFFIX)",
+
+		"PRODUCT_BUNDLE_IDENTIFIER":  "$(BUNDLE_ID_BASE)$(BUNDLE_ID_APPNAME)$(BUNDLE_ID_SIGNATURE)$(BUNDLE_ID_SUFFIX_NESTED)",
+		"PRODUCT_BUNDLE_IDENTIFIER2": "$(BUNDLE_ID_BASE:lower)$(BUNDLE_ID_APPNAME)$(BUNDLE_ID_SIGNATURE)$(BUNDLE_ID_SUFFIX_NESTED)",
 	}
 
 	// when:
-	res := subject.Replace(m["entry"], "entry", m)
+	subject.Replace("PRODUCT_BUNDLE_IDENTIFIER", m)
 
 	// then:
-	assert.EqualValues(t, "VALUE1:value2:value2", res)
+	assert.EqualValues(t, m["PRODUCT_BUNDLE_IDENTIFIER"], "toto.appname.sign.suffix")
 }
 
 func TestEntryToXCBuildConfguration(t *testing.T) {
