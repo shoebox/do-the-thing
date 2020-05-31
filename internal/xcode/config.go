@@ -6,5 +6,6 @@ type Config struct {
 	Path           string
 	CodeSign       bool
 	CodeSignOption struct {
+		Path string
 	}
 }
