@@ -65,28 +65,30 @@ func (c pbxConvertor) ToXCBuildConfiguration(e Entry) XCBuildConfiguration {
 func (c pbxConvertor) ToStringMap(m map[string]interface{}) map[string]string {
 	res := map[string]string{}
 	for k, v := range m {
-		res[k] = c.Replace(fmt.Sprintf("%v", v), k, res)
+		res[k] = fmt.Sprintf("%v", v)
+	}
+
+	for k, _ := range m {
+		c.Replace(k, res)
 	}
 
 	return res
 }
-
-func (c pbxConvertor) Replace(into string, key string, m map[string]string) string {
+func (c pbxConvertor) Replace(key string, m map[string]string) {
 	r := regexp.MustCompile(`\$\(([^\)\:]+):?(lower|upper)?\)`)
 
-	for _, e := range r.FindAllStringSubmatch(into, -1) {
+	for _, e := range r.FindAllStringSubmatch(m[key], -1) {
 		k := e[1]
 		mod := e[2]
+		c.Replace(k, m)
 
-		val := c.Replace(m[k], k, m)
-
+		val := m[key]
 		if mod == "lower" {
 			val = strings.ToLower(val)
 		} else if mod == "upper" {
 			val = strings.ToUpper(val)
 		}
 
-		into = strings.ReplaceAll(into, e[0], val)
+		m[key] = strings.ReplaceAll(m[key], e[0], m[k])
 	}
-	return into
 }
