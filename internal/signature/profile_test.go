@@ -1,13 +1,16 @@
 package signature
 
 import (
+	"bytes"
 	"context"
 	"dothething/internal/utiltest"
-	"errors"
+	"io"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.mozilla.org/pkcs7"
 )
 
 const validProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
@@ -134,25 +137,33 @@ const invalidPath = "/path/to/file2.provisioning"
 var mockExec *utiltest.MockExecutor
 var subject provisioningService
 
+var readerValid io.Reader
+
 func TestMain(m *testing.M) {
 	mockExec = new(utiltest.MockExecutor)
 	subject = provisioningService{mockExec}
 
-	mockExec.MockCommandContext(Security,
-		[]string{Cms, ArgDecodeCMS, ArgInlineFile, validPath},
-		validProvisioning,
-		nil)
-
 	os.Exit(m.Run())
+}
+
+func getSignedReaderData(source string) io.Reader {
+	// Sign the valid provisioning datas
+	d, _ := pkcs7.NewSignedData([]byte(source))
+
+	// And retrieve the byytes
+	b, _ := d.Finish()
+
+	return bytes.NewReader(b)
 }
 
 func TestDecode(t *testing.T) {
 	// when:
-	pp, err := subject.Decode(context.Background(), validPath)
+	pp, err := subject.Decode(context.Background(), getSignedReaderData(validProvisioning))
 
 	// then:
 	assert.NoError(t, err)
-	// assert.Equal(t, "abc.def.ghi", pp.AppID)
+
+	// and:
 	assert.Equal(t, "Selfsigners united", pp.TeamName)
 	assert.Equal(t, "12345ABCDE.*", pp.Entitlements.AppID)
 	assert.Equal(t, "B5C2906D-D6EE-476E-AF17-D99AE14644AA", pp.UUID)
@@ -160,53 +171,28 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecodeShouldHandleErrors(t *testing.T) {
-	// setup:
-	mockExec.MockCommandContext(Security,
-		[]string{Cms, ArgDecodeCMS, ArgInlineFile, invalidPath},
-		"",
-		errors.New("error text"))
-
 	// when:
-	pp, err := subject.Decode(context.Background(), invalidPath)
+	pp, err := subject.Decode(context.Background(), strings.NewReader(""))
 
 	// then:
-	assert.EqualError(t, err, "error text")
+	assert.EqualError(t, err, ErrorParsingPublicKey.Error())
 	assert.Empty(t, pp)
 }
 
 func TestDecodeShouldHandleDecodingErrors(t *testing.T) {
-	// setup:
-	mockExec.MockCommandContext(Security,
-		[]string{Cms, ArgDecodeCMS, ArgInlineFile, "/fake/path/fake-file.mobileprovision"},
-		`{"json":"text"}`,
-		nil)
-
 	// when:
-	pp, err := subject.Decode(context.Background(), "/fake/path/fake-file.mobileprovision")
+	_, err := subject.Decode(context.Background(), getSignedReaderData("invalid"))
 
 	// then:
 	assert.EqualError(t, err, "Failed to decode the provisioning file")
-	assert.Empty(t, pp)
 }
 
 func TestDecodeCertShouldHandleDecodingErrors(t *testing.T) {
-	// setup:
-	mockExec.MockCommandContext(Security,
-		[]string{Cms, ArgDecodeCMS, ArgInlineFile, "/toto/tutu/fake.mobileprovision"},
-		invalidProvisioning,
-		nil)
-
 	// when:
-	pp, err := subject.Decode(context.Background(), "/toto/tutu/fake.mobileprovision")
+	_, err := subject.Decode(context.Background(), strings.NewReader(invalidProvisioning))
 
 	// then:
 	assert.EqualError(t, err, "Failed to parse the provisioning file certificate")
-
-	// and:
-	// assert.Equal(t, "abc.def.ghi", pp.AppID)
-	// assert.Equal(t, []string([]string{"12345ABCDE"}), pp.TeamIdentifier)
-	assert.Equal(t, "Selfsigners united", pp.TeamName)
-	assert.Equal(t, "B5C2906D-D6EE-476E-AF17-D99AE14644AA", pp.UUID)
 }
 
 func TestFileDecodingProvisioningExecutation(t *testing.T) {
@@ -214,7 +200,7 @@ func TestFileDecodingProvisioningExecutation(t *testing.T) {
 	ctx := context.Background()
 
 	// when:
-	b, err := subject.decodeProvisioning(ctx, validPath)
+	b, err := subject.decodeProvisioning(ctx, getSignedReaderData(validProvisioning))
 
 	// then:
 	assert.NoError(t, err)

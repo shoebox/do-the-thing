@@ -6,17 +6,33 @@ import (
 	"crypto/x509"
 	"dothething/internal/util"
 	"errors"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"go.mozilla.org/pkcs7"
+
+	"golang.org/x/sync/errgroup"
 )
 
+// ProvisioningProfile type definition
 type ProvisioningProfile struct {
-	Name            string       `plist:"Name"`
-	RawCertificates [][]byte     `plist:"DeveloperCertificates"`
-	Entitlements    Entitlements `plist:"Entitlements"`
-	Certificates    []*x509.Certificate
-	TeamName        string `plist:"TeamName"`
-	UUID            string `plist:"UUID"`
+	BundleIdentifier string
+	Certificates     []*x509.Certificate
+	Entitlements     Entitlements `plist:"Entitlements"`
+	ExpirationDate   time.Time    `plist:"ExpirationDate"`
+	Name             string       `plist:"Name"`
+	Platform         []string     `plist:Platform`
+	RawCertificates  [][]byte     `plist:"DeveloperCertificates"`
+	TeamName         string       `plist:"TeamName"`
+	UUID             string       `plist:"UUID"`
 }
 
+// EntEntitlements provisioning entitlements definition
 type Entitlements struct {
 	AccessGroup string `json:"keychain-access-groups"`
 	Aps         string `json:"aps-environment"`
@@ -36,26 +52,33 @@ var (
 	ErrorParsingPublicKey = errors.New("Failed to parse the provisioning file certificate")
 )
 
+// ProvisioningService interface to describe the provisioning service method
 type ProvisioningService interface {
-	Decode(ctx context.Context, filePath string) (ProvisioningProfile, error)
+	Decode(ctx context.Context, r io.Reader) (ProvisioningProfile, error)
+	ResolveProvisioningFilesInFolder(ctx context.Context, root string) []ProvisioningProfile
 }
 
+// provisioningService implement the ProvisioningService interface
 type provisioningService struct {
 	util.Executor
 }
 
+// NeNewProvisioningService create a new instance of the provisioning service
 func NewProvisioningService(e util.Executor) ProvisioningService {
 	return provisioningService{Executor: e}
 }
 
-func (p provisioningService) Decode(ctx context.Context, filePath string) (ProvisioningProfile, error) {
+// Decode will decode the provisioning at the designated filepath
+func (p provisioningService) Decode(ctx context.Context, r io.Reader) (ProvisioningProfile, error) {
 	var pp ProvisioningProfile
-	data, err := p.decodeProvisioning(ctx, filePath)
+
+	// First we decode the provisioning at path
+	data, err := p.decodeProvisioning(ctx, r)
 	if err != nil {
-		return pp, err
+		return pp, ErrorParsingPublicKey
 	}
 
-	// Parse plist file
+	// We parse the provisioning plist file content, and unmarshal it
 	if err := util.DecodeFile(bytes.NewReader(data), &pp); err != nil {
 		return pp, ErrorFailedToDecode
 	}
@@ -66,27 +89,133 @@ func (p provisioningService) Decode(ctx context.Context, filePath string) (Provi
 		return pp, err
 	}
 
+	// For more convenience compute the bundle identifier without the teamID prefix.
+	pp.BundleIdentifier = strings.TrimPrefix(pp.Entitlements.AppID,
+		fmt.Sprintf("%s.", pp.Entitlements.TeamID))
+
 	return pp, err
 }
 
-func (p provisioningService) decodeProvisioning(ctx context.Context, filePath string) ([]byte, error) {
-	// Invoke security tool to decode the file
-	return p.Executor.CommandContext(ctx,
-		Security,
-		Cms, ArgDecodeCMS,
-		ArgInlineFile, filePath).Output()
+// ResolveProvisioningFilesInFolder walk the provided root path and resolve all provisioning
+// profiles contained into it
+func (r provisioningService) ResolveProvisioningFilesInFolder(ctx context.Context, root string) []ProvisioningProfile {
+	res := []ProvisioningProfile{}
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	// Matching paths channel
+	paths := make(chan string)
+
+	// Into a goroutine
+	g.Go(func() error {
+		// Defer closing the path channel
+		defer close(paths)
+
+		// Walk the root path
+		return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			// Check if the file is a provisioning file
+			if !isProvisioningFile(info) {
+				return nil
+			}
+
+			// Select result
+			select {
+			case paths <- path: // Add the result path to the channel
+			case <-ctx.Done(): // Handle context cancelation
+				return ctx.Err()
+			}
+			return nil
+		})
+	})
+
+	// Channel of provisionings
+	provisionings := make(chan ProvisioningProfile)
+
+	// For each path in the paths channel
+	for p := range paths {
+		// We run a goroutine
+		g.Go(func() error {
+			// Open the file
+			f, err := os.Open(p)
+			if err != nil {
+				return err
+			}
+
+			// Which try to decode the candidate provisioning file
+			dpp, err := r.Decode(ctx, f)
+			if err != nil {
+				return err
+			}
+
+			// Select result
+			select {
+			case provisionings <- dpp: // Add the decoded provisioning to the channel
+			case <-ctx.Done(): // Handle context cancelation
+				return ctx.Err()
+			}
+			return nil
+		})
+	}
+
+	go func() {
+		g.Wait()
+		close(provisionings)
+	}()
+
+	// Convert the channel result to a slice
+	for pp := range provisionings {
+		res = append(res, pp)
+	}
+
+	// Check whether any of the goroutines failed. Since g is accumulating the
+	// errors, we don't need to send them (or check for them) in the individual
+	// results sent on the channel.
+	if err := g.Wait(); err != nil {
+		return res
+	}
+
+	return res
 }
 
+// decodeProvisioning is using the security API to decode the provisioning file
+func (p provisioningService) decodeProvisioning(ctx context.Context, r io.Reader) ([]byte, error) {
+	var res []byte
+
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return res, err
+	}
+
+	// Decrypt the DMS message encrypted (DMS is based on PKCS#7)
+	// which is the equivalent of using the security cms toolkit
+	p7, err := pkcs7.Parse(b)
+	if err != nil {
+		return res, err
+	}
+
+	// Return message content
+	return p7.Content, nil
+}
+
+// parseRawX509Certificates will parse the raw certificate slice
 func parseRawX509Certificates(raw [][]byte) ([]*x509.Certificate, error) {
-	certs := []*x509.Certificate{}
+	res := []*x509.Certificate{}
+
+	// Iterate on all raw certificates
 	for _, data := range raw {
+		// To parse them
 		k, err := x509.ParseCertificate(data)
 		if err != nil {
 			return nil, ErrorParsingPublicKey
 		}
 
-		certs = append(certs, k)
+		// And append the parse certificate to the result array
+		res = append(res, k)
 	}
 
-	return certs, nil
+	return res, nil
 }
