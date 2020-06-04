@@ -26,7 +26,7 @@ type ProvisioningProfile struct {
 	Entitlements     Entitlements `plist:"Entitlements"`
 	ExpirationDate   time.Time    `plist:"ExpirationDate"`
 	Name             string       `plist:"Name"`
-	Platform         []string     `plist:Platform`
+	Platform         []string     `plist:"Platform"`
 	RawCertificates  [][]byte     `plist:"DeveloperCertificates"`
 	TeamName         string       `plist:"TeamName"`
 	UUID             string       `plist:"UUID"`
@@ -96,6 +96,59 @@ func (p provisioningService) Decode(ctx context.Context, r io.Reader) (Provision
 	return pp, err
 }
 
+// isProvisioningFile check if the candidate is a valid provisioning file by testing it's
+// type and file extension
+func isProvisioningFile(info os.FileInfo) bool {
+	return info.Mode().IsRegular() &&
+		!info.IsDir() &&
+		strings.HasSuffix(info.Name(), ".mobileprovision")
+}
+
+// walkOnPath validate if the provided path is provisioning file and report the result
+// to be paired with the filepath.Walk call in ResolveProvisioningFilesInFolder
+func (r provisioningService) walkOnPath(ctx context.Context,
+	path string,
+	cpath chan string,
+	info os.FileInfo) error {
+
+	// Check if the file is a provisioning file
+	if !isProvisioningFile(info) {
+		return nil
+	}
+
+	// Select result
+	select {
+	case cpath <- path: // Add the result path to the channel
+	case <-ctx.Done(): // Handle context cancelation
+		return ctx.Err()
+	}
+	return nil
+}
+
+func (r provisioningService) readCert(ctx context.Context,
+	path string,
+	cprov chan ProvisioningProfile) error {
+	// Open the file
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	// Which try to decode the candidate provisioning file
+	dpp, err := r.Decode(ctx, f)
+	if err != nil {
+		return err
+	}
+
+	// Select result
+	select {
+	case cprov <- dpp: // Add the decoded provisioning to the channel
+	case <-ctx.Done(): // Handle context cancelation
+		return ctx.Err()
+	}
+	return nil
+}
+
 // ResolveProvisioningFilesInFolder walk the provided root path and resolve all provisioning
 // profiles contained into it
 func (r provisioningService) ResolveProvisioningFilesInFolder(ctx context.Context, root string) []ProvisioningProfile {
@@ -117,18 +170,7 @@ func (r provisioningService) ResolveProvisioningFilesInFolder(ctx context.Contex
 				return err
 			}
 
-			// Check if the file is a provisioning file
-			if !isProvisioningFile(info) {
-				return nil
-			}
-
-			// Select result
-			select {
-			case paths <- path: // Add the result path to the channel
-			case <-ctx.Done(): // Handle context cancelation
-				return ctx.Err()
-			}
-			return nil
+			return r.walkOnPath(ctx, path, paths, info)
 		})
 	})
 
@@ -139,25 +181,7 @@ func (r provisioningService) ResolveProvisioningFilesInFolder(ctx context.Contex
 	for p := range paths {
 		// We run a goroutine
 		g.Go(func() error {
-			// Open the file
-			f, err := os.Open(p)
-			if err != nil {
-				return err
-			}
-
-			// Which try to decode the candidate provisioning file
-			dpp, err := r.Decode(ctx, f)
-			if err != nil {
-				return err
-			}
-
-			// Select result
-			select {
-			case provisionings <- dpp: // Add the decoded provisioning to the channel
-			case <-ctx.Done(): // Handle context cancelation
-				return ctx.Err()
-			}
-			return nil
+			return r.readCert(ctx, p, provisionings)
 		})
 	}
 

@@ -215,11 +215,100 @@ func TestParseRawX509Certificates(t *testing.T) {
 		// setup:
 		data := [][]byte{[]byte("Hello world")}
 
-		// when:
+		// when: Parsing certificate datas
 		res, err := parseRawX509Certificates(data)
 
-		// then:
+		// then: An error should be returned
 		assert.EqualValues(t, ErrorParsingPublicKey, err)
 		assert.Nil(t, res)
 	})
 }
+
+func TestIsProvisioning(t *testing.T) {
+	// setup:
+	cases := []struct {
+		fi    mockedFileInfo
+		name  string
+		valid bool
+	}{
+		{
+			fi:    mockedFileInfo{fileMode: 0, isDir: false, name: ""},
+			name:  "Invalid file mode",
+			valid: false,
+		},
+		{
+			fi:    mockedFileInfo{fileMode: os.ModeAppend, isDir: true, name: "toto.mobileprovision"},
+			name:  "Should not be a directory",
+			valid: false,
+		},
+		{
+			fi:    mockedFileInfo{fileMode: os.ModeAppend, isDir: false, name: "toto.mobileprovision"},
+			name:  "Valid mode",
+			valid: true,
+		},
+		{
+			fi:    mockedFileInfo{fileMode: os.ModeAppend, isDir: false, name: "toto.prov"},
+			name:  "Should have the right extension",
+			valid: false,
+		},
+		{
+			fi:    mockedFileInfo{fileMode: os.ModeIrregular, isDir: false, name: "toto.mobileprovision"},
+			name:  "Should be regular mode",
+			valid: false,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// when:
+			res := isProvisioningFile(c.fi)
+
+			// then:
+			assert.EqualValues(t, c.valid, res)
+		})
+	}
+}
+
+func TestWalkOnPath(t *testing.T) {
+	path := "/fake/path/to/provisiong"
+
+	// setup:
+	cpath := make(chan string)
+	mockedFileInfo := mockedFileInfo{fileMode: os.ModeAppend, isDir: false, name: "toto.mobileprovision"}
+
+	// when: Walking of the provided path
+	go func() {
+		//
+		defer close(cpath)
+
+		// when walking the path
+		err := subject.walkOnPath(context.Background(),
+			path,
+			cpath,
+			mockedFileInfo)
+
+		// then: We should expect no error
+		assert.NoError(t, err)
+	}()
+
+	// and: the channel should be populated
+	p := <-cpath
+	assert.EqualValues(t, path, p)
+}
+
+// mockedFileInfo is a mock of the os.FileInfo class to be able to test different configuration
+type mockedFileInfo struct {
+	os.FileInfo             // Embed this so we only need to add methods used by testable functions
+	fileMode    os.FileMode // mode
+	isDir       bool        // Do the file is a directory
+	name        string      // file base name
+}
+
+// Name will return the configured value for the mock of the name field
+func (m mockedFileInfo) Name() string { return m.name }
+
+// Mode will return the configure value for the mock of the fileMode field
+func (m mockedFileInfo) Mode() os.FileMode { return m.fileMode }
+
+// IsDir will return the configure value for the mock of the isDir field
+func (m mockedFileInfo) IsDir() bool { return m.isDir }
