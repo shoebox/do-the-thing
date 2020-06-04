@@ -29,23 +29,11 @@ var targetProject project.Project
 func main() {
 	// logger
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
 	// Context
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
-
-	config = xcode.Config{
-		// Path:   "/Users/johann.martinache/Desktop/tmp/Swiftstraints/Swiftstraints.xcodeproj",
-		// Scheme: "Swiftstraints iOS",
-		Configuration: "Prod_Internal_Mena_Release",
-		Path:          "/Users/johann.martinache/Desktop/massive/bein/bein-apple/beIN.xcodeproj",
-		Scheme:        "beIN_iOS Prod_Internal_Mena",
-		Target:        "beIN_iOS",
-		CodeSignOption: xcode.SignConfig{
-			Path: "/Users/johann.martinache/Desktop/massive/bein/bein-apple/distribution/mobileprovision",
-		},
-	}
 
 	//
 	// path := "/Users/johann.martinache/Desktop/tmp/Swiftstraints/Swiftstraints.xcodeproj"
@@ -53,7 +41,9 @@ func main() {
 
 	// f := util.IoUtilFileService{}
 	executor = util.NewExecutor()
+
 	xcb = xcode.NewService(executor, config.Path)
+
 	serviceProject = project.NewProjectService(ioutil.ReadFile, xcb, executor)
 	serviceProvisioning = signature.NewProvisioningService(executor)
 
@@ -107,7 +97,8 @@ func resolveSignature() {
 	}
 
 	resolver := signature.NewSignatureResolver(serviceProvisioning)
-	resolver.Resolve(context.Background(), config, targetProject)
+	provisioning, p12, err := resolver.Resolve(context.Background(), config, targetProject)
+	fmt.Println(provisioning, p12, err)
 }
 
 func selectService(e util.Executor, l xcode.ListService) error {
@@ -172,7 +163,7 @@ func keychainTest(e util.Executor) error {
 	}
 
 	// Delete it at the end
-	defer k.Delete(ctx)
+	// defer k.Delete(ctx)
 
 	// Create the new keychain
 	err = k.Create(ctx, "password")
