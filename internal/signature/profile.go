@@ -32,7 +32,7 @@ type ProvisioningProfile struct {
 	UUID             string       `plist:"UUID"`
 }
 
-// EntEntitlements provisioning entitlements definition
+// Entitlements provisioning entitlements definition
 type Entitlements struct {
 	AccessGroup string `json:"keychain-access-groups"`
 	Aps         string `json:"aps-environment"`
@@ -40,15 +40,11 @@ type Entitlements struct {
 	TeamID      string `plist:"com.apple.developer.team-identifier"`
 }
 
-const (
-	Security      string = "security"
-	Cms           string = "cms"
-	ArgDecodeCMS  string = "-D"
-	ArgInlineFile string = "-i"
-)
-
 var (
-	ErrorFailedToDecode   = errors.New("Failed to decode the provisioning file")
+	// ErrorFailedToDecode the decode of the provisioning profile failed
+	ErrorFailedToDecode = errors.New("Failed to decode the provisioning file")
+
+	// ErrorParsingPublicKey the parsing of the public key contained in the provisioning pofile failed
 	ErrorParsingPublicKey = errors.New("Failed to parse the provisioning file certificate")
 )
 
@@ -63,7 +59,7 @@ type provisioningService struct {
 	util.Executor
 }
 
-// NeNewProvisioningService create a new instance of the provisioning service
+// NewProvisioningService create a new instance of the provisioning service
 func NewProvisioningService(e util.Executor) ProvisioningService {
 	return provisioningService{Executor: e}
 }
@@ -106,7 +102,7 @@ func isProvisioningFile(info os.FileInfo) bool {
 
 // walkOnPath validate if the provided path is provisioning file and report the result
 // to be paired with the filepath.Walk call in ResolveProvisioningFilesInFolder
-func (r provisioningService) walkOnPath(ctx context.Context,
+func (p provisioningService) walkOnPath(ctx context.Context,
 	path string,
 	cpath chan string,
 	info os.FileInfo) error {
@@ -125,33 +121,48 @@ func (r provisioningService) walkOnPath(ctx context.Context,
 	return nil
 }
 
-func (r provisioningService) readCert(ctx context.Context,
-	path string,
-	cprov chan ProvisioningProfile) error {
-	// Open the file
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
+func (p provisioningService) decodeRawProvisioning(ctx context.Context,
+	reader io.Reader,
+	cprovisioning chan ProvisioningProfile) error {
 
 	// Which try to decode the candidate provisioning file
-	dpp, err := r.Decode(ctx, f)
+	dpp, err := p.Decode(ctx, reader)
 	if err != nil {
 		return err
 	}
 
-	// Select result
+	//Use a select statement to exit out if context expires
 	select {
-	case cprov <- dpp: // Add the decoded provisioning to the channel
 	case <-ctx.Done(): // Handle context cancelation
-		return ctx.Err()
+		return nil
+	case cprovisioning <- dpp: // Add the decoded provisioning to the channel
+		return nil
 	}
-	return nil
+}
+
+// readProvisioningFile Read the provided file at path and try to decode it as provisioning
+func (p provisioningService) readProvisioningFile(ctx context.Context,
+	g *errgroup.Group,
+	path string,
+	cprovisioning chan ProvisioningProfile) {
+	// We run a goroutine
+	g.Go(func() error {
+		// Open the file to a reader
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		// Close the file
+		defer f.Close()
+
+		// Read the content of the file
+		return p.decodeRawProvisioning(ctx, f, cprovisioning)
+	})
 }
 
 // ResolveProvisioningFilesInFolder walk the provided root path and resolve all provisioning
 // profiles contained into it
-func (r provisioningService) ResolveProvisioningFilesInFolder(ctx context.Context, root string) []ProvisioningProfile {
+func (p provisioningService) ResolveProvisioningFilesInFolder(ctx context.Context, root string) []ProvisioningProfile {
 	res := []ProvisioningProfile{}
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -170,7 +181,7 @@ func (r provisioningService) ResolveProvisioningFilesInFolder(ctx context.Contex
 				return err
 			}
 
-			return r.walkOnPath(ctx, path, paths, info)
+			return p.walkOnPath(ctx, path, paths, info)
 		})
 	})
 
@@ -178,11 +189,8 @@ func (r provisioningService) ResolveProvisioningFilesInFolder(ctx context.Contex
 	provisionings := make(chan ProvisioningProfile)
 
 	// For each path in the paths channel
-	for p := range paths {
-		// We run a goroutine
-		g.Go(func() error {
-			return r.readCert(ctx, p, provisionings)
-		})
+	for path := range paths {
+		p.readProvisioningFile(ctx, g, path, provisionings)
 	}
 
 	go func() {

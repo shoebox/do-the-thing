@@ -224,6 +224,58 @@ func TestParseRawX509Certificates(t *testing.T) {
 	})
 }
 
+func TestReadCert(t *testing.T) {
+	// setup:
+	cprov := make(chan ProvisioningProfile)
+
+	// when:
+	go func() {
+		// Defer closing the channel
+		defer close(cprov)
+
+		// Making call to the target method
+		err := subject.decodeRawProvisioning(context.Background(),
+			getSignedReaderData(validProvisioning),
+			cprov)
+
+		// then: Asserting no errors
+		assert.NoError(t, err)
+	}()
+
+	// then: The value in the channel should be populated
+	pp := <-cprov
+	assert.Equal(t, "Selfsigners united", pp.TeamName)
+	assert.Equal(t, "12345ABCDE.*", pp.Entitlements.AppID)
+	assert.Equal(t, "B5C2906D-D6EE-476E-AF17-D99AE14644AA", pp.UUID)
+}
+
+func TestReadCertErrorHanding(t *testing.T) {
+	// setup:
+	cprov := make(chan ProvisioningProfile)
+
+	var err error
+
+	// when:
+	go func() {
+		// Defer closing the channel
+		defer close(cprov)
+
+		// Making call to the target method
+		err = subject.decodeRawProvisioning(context.Background(),
+			strings.NewReader(""),
+			cprov)
+	}()
+
+	// then: Ready the results
+	res := <-cprov
+
+	// It should be empty
+	assert.Empty(t, res)
+
+	// and: A parsing error should have been raised
+	assert.EqualError(t, err, "Failed to parse the provisioning file certificate")
+}
+
 func TestIsProvisioning(t *testing.T) {
 	// setup:
 	cases := []struct {
