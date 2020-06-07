@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"context"
 	"dothething/internal/utiltest"
+	"errors"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"go.mozilla.org/pkcs7"
+	"golang.org/x/sync/errgroup"
 )
 
 const validProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
@@ -135,13 +138,15 @@ const validPath = "/path/to/file.provisioning"
 const invalidPath = "/path/to/file2.provisioning"
 
 var mockExec *utiltest.MockExecutor
+var mockFs *utiltest.MockFileService
 var subject provisioningService
 
 var readerValid io.Reader
 
 func TestMain(m *testing.M) {
 	mockExec = new(utiltest.MockExecutor)
-	subject = provisioningService{mockExec}
+	mockFs = new(utiltest.MockFileService)
+	subject = provisioningService{Executor: mockExec, FileService: mockFs}
 
 	os.Exit(m.Run())
 }
@@ -319,6 +324,45 @@ func TestIsProvisioning(t *testing.T) {
 			assert.EqualValues(t, c.valid, res)
 		})
 	}
+}
+
+func TestReadProvisioningFileHandleError(t *testing.T) {
+	ctx := context.Background()
+	cprov := make(chan ProvisioningProfile)
+	path := "/fake/path/to/file.mobileprovision"
+
+	// Create a readCloser from the sample string
+	r := ioutil.NopCloser(strings.NewReader("hello world")) // r type is io.ReadCloser
+	err := errors.New("Error test")
+
+	// Mock response
+	g, ctx := errgroup.WithContext(ctx)
+	mockFs.On("Open", path).Return(r, err)
+
+	// when: Reading provisioning content and waiting for result
+	subject.readProvisioningFile(ctx, g, path, cprov)
+	err = g.Wait()
+
+	// Same error should be expected
+	assert.EqualError(t, err, err.Error())
+}
+
+func TestReadProvisioningDecoding(t *testing.T) {
+	ctx := context.Background()
+	cprov := make(chan ProvisioningProfile)
+	path := "/fake/path/to/other/file.mobileprovision"
+
+	// setup:
+	r := ioutil.NopCloser(strings.NewReader("hello world")) // r type is io.ReadCloser
+	g, ctx := errgroup.WithContext(ctx)
+	mockFs.On("Open", path).Return(r, nil)
+
+	// when: Reading provisioning content and waiting for result
+	subject.readProvisioningFile(ctx, g, path, cprov)
+	err := g.Wait()
+
+	// then: Parsing publc key error should be expected being an ivalid provisioning file
+	assert.EqualError(t, err, ErrorParsingPublicKey.Error())
 }
 
 func TestWalkOnPath(t *testing.T) {

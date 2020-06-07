@@ -56,12 +56,13 @@ type ProvisioningService interface {
 
 // provisioningService implement the ProvisioningService interface
 type provisioningService struct {
+	util.FileService
 	util.Executor
 }
 
 // NewProvisioningService create a new instance of the provisioning service
-func NewProvisioningService(e util.Executor) ProvisioningService {
-	return provisioningService{Executor: e}
+func NewProvisioningService(e util.Executor, f util.FileService) ProvisioningService {
+	return provisioningService{Executor: e, FileService: f}
 }
 
 // Decode will decode the provisioning at the designated filepath
@@ -148,10 +149,11 @@ func (p provisioningService) readProvisioningFile(ctx context.Context,
 	// We run a goroutine
 	g.Go(func() error {
 		// Open the file to a reader
-		f, err := os.Open(path)
+		f, err := p.FileService.Open(path)
 		if err != nil {
 			return err
 		}
+
 		// Close the file
 		defer f.Close()
 
