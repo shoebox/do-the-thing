@@ -1,4 +1,4 @@
-package xcode
+package config
 
 type Config struct {
 	Scheme         string
