@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"dothething/internal/client"
-	config2 "dothething/internal/config"
+	"dothething/internal/config"
 	"dothething/internal/keychain"
 	"dothething/internal/signature"
 	"dothething/internal/util"
@@ -17,7 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var config config2.Config
+var cfg config.Config
 var xcb xcode.BuildService
 var fileUtil util.FileService
 var serviceList xcode.ListService
@@ -38,18 +38,18 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	config = config2.Config{
+	cfg = config.Config{
 		Path:          "/Users/johann.martinache/Desktop/tmp/BookStore-iOS/BookStore.xcodeproj",
 		Scheme:        "BookStore",
 		Configuration: "Release",
 		Target:        "BookStore",
-		CodeSignOption: config2.SignConfig{
+		CodeSignOption: config.SignConfig{
 			Path: "",
 		},
 	}
 
 	var err error
-	api, err = client.NewAPIClient(config)
+	api, err = client.NewAPIClient(cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -120,13 +120,13 @@ func resolveSignature(ctx context.Context) error {
 		return err
 	}
 
-	if err := pj.ValidateConfiguration(config); err != nil {
+	if err := pj.ValidateConfiguration(cfg); err != nil {
 		log.Panic().AnErr("Error", err)
 
 		return err
 	}
 
-	provisioning, p12, err := api.SignatureResolver().Resolve(ctx, config, pj)
+	provisioning, p12, err := api.SignatureResolver().Resolve(ctx, cfg, pj)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func build() error {
 
 	return api.
 		ActionBuild().
-		Run(ctx, config)
+		Run(ctx, cfg)
 }
 
 func archive() error {
@@ -163,7 +163,7 @@ func archive() error {
 
 	return api.
 		ActionArchive().
-		Run(ctx, config)
+		Run(ctx, cfg)
 }
 
 func unitTest() error {
@@ -173,7 +173,7 @@ func unitTest() error {
 	// Retrieving the destination for the scheme
 	dd, err := api.
 		DestinationService().
-		List(ctx, config.Scheme)
+		List(ctx, cfg.Scheme)
 
 	if err != nil {
 		return err
@@ -189,7 +189,7 @@ func unitTest() error {
 	api.DestinationService().Boot(ctx, d)
 
 	// Running the test
-	return api.ActionRunTest().Run(ctx, d, config)
+	return api.ActionRunTest().Run(ctx, d, cfg)
 }
 
 func keychainTest(e util.Executor) error {
