@@ -113,7 +113,7 @@ func (s *DestinationTestSuite) TestList() {
 	s.executor.
 		On("CommandContext",
 			s.ctx,
-			xcode.Build,
+			xcode.Cmd,
 			[]string{
 				xcode.FlagShowDestinations,
 				xcode.FlagProject,

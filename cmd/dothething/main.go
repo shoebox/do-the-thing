@@ -2,15 +2,14 @@ package main
 
 import (
 	"context"
-	"dothething/internal/action"
-	"dothething/internal/destination"
+	"dothething/internal/client"
+	config2 "dothething/internal/config"
 	"dothething/internal/keychain"
 	"dothething/internal/signature"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
 	"dothething/internal/xcode/project"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -18,13 +17,17 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var config xcode.Config
+var config config2.Config
 var xcb xcode.BuildService
+var fileUtil util.FileService
 var serviceList xcode.ListService
-var serviceProject project.ProjectService
+
+//var serviceProject project.ProjectService
 var serviceProvisioning signature.ProvisioningService
 var executor util.Executor
 var targetProject project.Project
+
+var api client.API
 
 func main() {
 	// logger
@@ -35,26 +38,38 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
+	config = config2.Config{
+		Path:          "/Users/johann.martinache/Desktop/tmp/BookStore-iOS/BookStore.xcodeproj",
+		Scheme:        "BookStore",
+		Configuration: "Release",
+		Target:        "BookStore",
+		CodeSignOption: config2.SignConfig{
+			Path: "",
+		},
+	}
+
+	var err error
+	api, err = client.NewAPIClient(config)
+	if err != nil {
+		panic(err)
+	}
+
 	//
 	// path := "/Users/johann.martinache/Desktop/tmp/Swiftstraints/Swiftstraints.xcodeproj"
 	//path := "/Users/johann.martinache/Desktop/massive/bein/bein-apple/beIN.xcodeproj"
 
 	// f := util.IoUtilFileService{}
-	executor = util.NewExecutor()
 
-	xcb = xcode.NewService(executor, config.Path)
+	// xcb = xcode.NewService(executor, config.Path)
 
-	serviceProject = project.NewProjectService(ioutil.ReadFile, xcb, executor)
-	serviceProvisioning = signature.NewProvisioningService(executor)
+	//serviceProject = project.NewProjectService(ioutil.ReadFile, xcb, executor)
+	// serviceProvisioning = signature.NewProvisioningService(executor, f)
 
-	var err error
-	targetProject, err = serviceProject.Parse(ctx)
-	fmt.Printf("Project %#v %v\n", targetProject.Name, err)
-
-	resolveSignature()
-	//build()
-	//archive()
-	// unitTest(e, xcb)
+	err = resolveSignature(ctx)
+	fmt.Println("err", err)
+	build()
+	archive()
+	unitTest()
 
 	// List service
 	//listService := xcode.NewXCodeListService(e, f)
@@ -86,19 +101,37 @@ func main() {
 	*/
 }
 
-func resolveSignature() {
-	// serviceProject.ValidateConfiguration(config)
-
-	if err := targetProject.ValidateConfiguration(config); err != nil {
-		fmt.Println("Err ::", err)
-		log.Panic().AnErr("Error", err)
-
-		return
+func listXCodeInstance(ctx context.Context) error {
+	installs, err := api.XCodeListService().List(ctx)
+	if err != nil {
+		return err
 	}
 
-	resolver := signature.NewSignatureResolver(serviceProvisioning)
-	provisioning, p12, err := resolver.Resolve(context.Background(), config, targetProject)
+	for _, i := range installs {
+		fmt.Println(i.Path, i.Version)
+	}
+
+	return nil
+}
+
+func resolveSignature(ctx context.Context) error {
+	pj, err := api.XCodeProjectService().Parse(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := pj.ValidateConfiguration(config); err != nil {
+		log.Panic().AnErr("Error", err)
+
+		return err
+	}
+
+	provisioning, p12, err := api.SignatureResolver().Resolve(ctx, config, pj)
+	if err != nil {
+		return err
+	}
 	fmt.Println(provisioning, p12, err)
+	return nil
 }
 
 func selectService(e util.Executor, l xcode.ListService) error {
@@ -115,41 +148,48 @@ func selectService(e util.Executor, l xcode.ListService) error {
 	return nil
 }
 
-func build() {
+func build() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	a := action.NewBuild(xcb, executor)
-	a.Run(ctx, config)
+	return api.
+		ActionBuild().
+		Run(ctx, config)
 }
 
-func archive() {
+func archive() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	a := action.NewArchive(xcb, executor)
-	a.Run(ctx, config)
+	return api.
+		ActionArchive().
+		Run(ctx, config)
 }
 
-func unitTest(e util.Executor, x xcode.BuildService) error {
+func unitTest() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	dest := destination.NewDestinationService(x, e)
-	dd, err := dest.List(ctx, "Swiftstraints iOS")
+	// Retrieving the destination for the scheme
+	dd, err := api.
+		DestinationService().
+		List(ctx, config.Scheme)
+
 	if err != nil {
 		return err
 	}
 
+	// As a test for now use the last destination
 	d := dd[len(dd)-1]
-	defer dest.ShutDown(ctx, d)
 
-	if err := dest.Boot(ctx, d); err != nil {
-		return err
-	}
+	// Shutting it down deferred
+	defer api.DestinationService().ShutDown(ctx, d)
 
-	a := action.NewActionRun(x, e)
-	return a.Run(ctx, d, config)
+	// Booting it now
+	api.DestinationService().Boot(ctx, d)
+
+	// Running the test
+	return api.ActionRunTest().Run(ctx, d, config)
 }
 
 func keychainTest(e util.Executor) error {

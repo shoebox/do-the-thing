@@ -10,13 +10,10 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"go.mozilla.org/pkcs7"
-
-	"golang.org/x/sync/errgroup"
 )
 
 // ProvisioningProfile type definition
@@ -103,10 +100,12 @@ func isProvisioningFile(info os.FileInfo) bool {
 
 // walkOnPath validate if the provided path is provisioning file and report the result
 // to be paired with the filepath.Walk call in ResolveProvisioningFilesInFolder
-func (p provisioningService) walkOnPath(ctx context.Context,
+func (p provisioningService) walkOnPath(
+	ctx context.Context,
 	path string,
 	cpath chan string,
-	info os.FileInfo) error {
+	info os.FileInfo,
+) error {
 
 	// Check if the file is a provisioning file
 	if !isProvisioningFile(info) {
@@ -142,61 +141,48 @@ func (p provisioningService) decodeRawProvisioning(ctx context.Context,
 }
 
 // readProvisioningFile Read the provided file at path and try to decode it as provisioning
-func (p provisioningService) readProvisioningFile(ctx context.Context,
-	g *errgroup.Group,
+func (p provisioningService) readProvisioningFile(
+	ctx context.Context,
 	path string,
-	cprovisioning chan ProvisioningProfile) {
-	// We run a goroutine
-	g.Go(func() error {
-		// Open the file to a reader
-		f, err := p.FileService.Open(path)
-		if err != nil {
-			return err
-		}
+	cprovisioning chan ProvisioningProfile,
+) error {
+	// Open the file to a reader
+	f, err := p.FileService.Open(path)
+	if err != nil {
+		return err
+	}
 
-		// Close the file
-		defer f.Close()
+	// Close the file
+	defer f.Close()
 
-		// Read the content of the file
-		return p.decodeRawProvisioning(ctx, f, cprovisioning)
-	})
+	// Read the content of the file
+	return p.decodeRawProvisioning(ctx, f, cprovisioning)
 }
 
 // ResolveProvisioningFilesInFolder walk the provided root path and resolve all provisioning
 // profiles contained into it
-func (p provisioningService) ResolveProvisioningFilesInFolder(ctx context.Context, root string) []ProvisioningProfile {
+func (p provisioningService) ResolveProvisioningFilesInFolder(
+	ctx context.Context,
+	root string,
+) []ProvisioningProfile {
 	res := []ProvisioningProfile{}
-
-	g, ctx := errgroup.WithContext(ctx)
-
-	// Matching paths channel
-	paths := make(chan string)
-
-	// Into a goroutine
-	g.Go(func() error {
-		// Defer closing the path channel
-		defer close(paths)
-
-		// Walk the root path
-		return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-
-			return p.walkOnPath(ctx, path, paths, info)
-		})
-	})
 
 	// Channel of provisionings
 	provisionings := make(chan ProvisioningProfile)
-
-	// For each path in the paths channel
-	for path := range paths {
-		p.readProvisioningFile(ctx, g, path, provisionings)
-	}
+	errgroup := p.FileService.Walk(
+		ctx,
+		root,
+		isProvisioningFile,
+		// For each candidate certificate file
+		func(ctx context.Context, path string) error {
+			return p.readProvisioningFile(ctx, path, provisionings)
+		})
 
 	go func() {
-		g.Wait()
+		// Waiting for the goroutines to complete
+		errgroup.Wait()
+
+		// Closing the channel
 		close(provisionings)
 	}()
 
@@ -205,10 +191,10 @@ func (p provisioningService) ResolveProvisioningFilesInFolder(ctx context.Contex
 		res = append(res, pp)
 	}
 
-	// Check whether any of the goroutines failed. Since g is accumulating the
+	// Check whether any of the goroutines failed. Since the error group is accumulating the
 	// errors, we don't need to send them (or check for them) in the individual
 	// results sent on the channel.
-	if err := g.Wait(); err != nil {
+	if err := errgroup.Wait(); err != nil {
 		return res
 	}
 

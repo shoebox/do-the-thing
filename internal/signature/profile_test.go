@@ -13,7 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.mozilla.org/pkcs7"
-	"golang.org/x/sync/errgroup"
 )
 
 const validProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
@@ -336,15 +335,13 @@ func TestReadProvisioningFileHandleError(t *testing.T) {
 	err := errors.New("Error test")
 
 	// Mock response
-	g, ctx := errgroup.WithContext(ctx)
 	mockFs.On("Open", path).Return(r, err)
 
 	// when: Reading provisioning content and waiting for result
-	subject.readProvisioningFile(ctx, g, path, cprov)
-	err = g.Wait()
+	rerr := subject.readProvisioningFile(ctx, path, cprov)
 
 	// Same error should be expected
-	assert.EqualError(t, err, err.Error())
+	assert.EqualError(t, rerr, err.Error())
 }
 
 func TestReadProvisioningDecoding(t *testing.T) {
@@ -354,12 +351,10 @@ func TestReadProvisioningDecoding(t *testing.T) {
 
 	// setup:
 	r := ioutil.NopCloser(strings.NewReader("hello world")) // r type is io.ReadCloser
-	g, ctx := errgroup.WithContext(ctx)
 	mockFs.On("Open", path).Return(r, nil)
 
 	// when: Reading provisioning content and waiting for result
-	subject.readProvisioningFile(ctx, g, path, cprov)
-	err := g.Wait()
+	err := subject.readProvisioningFile(ctx, path, cprov)
 
 	// then: Parsing publc key error should be expected being an ivalid provisioning file
 	assert.EqualError(t, err, ErrorParsingPublicKey.Error())
