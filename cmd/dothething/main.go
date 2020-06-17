@@ -54,51 +54,11 @@ func main() {
 		panic(err)
 	}
 
-	//
-	// path := "/Users/johann.martinache/Desktop/tmp/Swiftstraints/Swiftstraints.xcodeproj"
-	//path := "/Users/johann.martinache/Desktop/massive/bein/bein-apple/beIN.xcodeproj"
-
-	// f := util.IoUtilFileService{}
-
-	// xcb = xcode.NewService(executor, config.Path)
-
-	//serviceProject = project.NewProjectService(ioutil.ReadFile, xcb, executor)
-	// serviceProvisioning = signature.NewProvisioningService(executor, f)
-
 	err = resolveSignature(ctx)
 	fmt.Println("err", err)
 	build()
 	archive()
 	unitTest()
-
-	// List service
-	//listService := xcode.NewXCodeListService(e, f)
-	//fmt.Println(listService)
-	//listService.List(ctx)
-
-	/*
-		list, err := listService.List(ctx)
-		fmt.Println("Xcode list :::", list, err)
-
-		//
-		if err := selectService(e, listService); err != nil {
-			log.Error().AnErr("Error", err).Msg("Select service error")
-		}
-
-		//
-		if err := unitTest(e, xcodeService); err != nil {
-			log.Error().AnErr("Error", err).Msg("Unit test error")
-		}
-
-		if err := keychainTest(e); err != nil {
-			log.Error().AnErr("Error", err).Msg("Keychain error")
-		}
-		/*
-			// # find the id that points to the location of the encoded file in the .xcresult bundle
-			// id=$(xcrun xcresulttool get --format json --path Tests.xcresult | jq '.actions._values[]' | jq -r '.actionResult.logRef.id._value')
-			// # export the log found at the the id in the .xcresult bundle
-			// xcrun xcresulttool export --path Tests.xcresult --id $id --output-path TestsStdErrorStdout.log --type file
-	*/
 }
 
 func listXCodeInstance(ctx context.Context) error {
