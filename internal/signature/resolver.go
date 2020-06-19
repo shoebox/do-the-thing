@@ -7,7 +7,10 @@ import (
 	"dothething/internal/xcode/pbx"
 	"dothething/internal/xcode/project"
 	"errors"
+	"fmt"
 )
+
+var ErrNoMatchFound = errors.New("No match found")
 
 // Resolver is the base interface for the signature result
 type Resolver interface {
@@ -15,7 +18,13 @@ type Resolver interface {
 	// provided project configuration
 	Resolve(ctx context.Context,
 		c config.Config,
-		p project.Project) (ProvisioningProfile, P12Certificate, error)
+		p project.Project) (SignatureConfiguration, error)
+}
+
+type SignatureConfiguration struct {
+	ProvisioningProfile ProvisioningProfile
+	Cert                P12Certificate
+	path                string
 }
 
 // NewResolver creates a new instance of the signature resolver to be use to find the
@@ -35,29 +44,28 @@ type signatureResolver struct {
 // provided project configuration
 func (r signatureResolver) Resolve(ctx context.Context,
 	config config.Config,
-	p project.Project) (ProvisioningProfile, P12Certificate, error) {
+	p project.Project) (SignatureConfiguration, error) {
 
-	var cert P12Certificate
-	var provisioning ProvisioningProfile
+	var res SignatureConfiguration
 
 	// Resolving target
 	nativeTarget, err := pbx.FindTargetByName(p.Pbx.Targets, config.Target)
 	if err != nil {
-		return provisioning, cert, err
+		return res, err
 	}
 
 	// Resolving build configuration
 	list, err := nativeTarget.BuildConfigurationList.FindConfiguration(config.Configuration)
 	if err != nil {
-		return provisioning, cert, err
+		return res, err
 	}
 
 	// Matching the right provisioning file for the project bundle identifier configuration
-	provisioning, err = r.resolveProvisioningFileFor(ctx,
+	res.ProvisioningProfile, err = r.resolveProvisioningFileFor(ctx,
 		config,
 		list.BuildSettings["PRODUCT_BUNDLE_IDENTIFIER"])
 	if err != nil {
-		return provisioning, cert, err
+		return res, err
 	}
 
 	// And trying find a matching certificate to pair with the bundle identifier
@@ -65,23 +73,23 @@ func (r signatureResolver) Resolve(ctx context.Context,
 	var found bool
 
 	// The provisioning public key to match on
-	provisioningPublicKey := provisioning.Certificates[0].Raw
+	provisioningPublicKey := res.ProvisioningProfile.Certificates[0].Raw
 
 	// We iterate on all certificates found in the path
 	for _, c := range certs {
 		// We check if the certificate public key is matching the provisioning's
 		if bytes.Compare(c.Raw, provisioningPublicKey) == 0 {
 			// If yes we created the new pair object with those.
-			cert = c
+			res.Cert = c
 			found = true
 		}
 	}
 
 	if !found {
-		return provisioning, cert, errors.New("Could not find a matching certificate")
+		return res, errors.New("Could not find a matching certificate")
 	}
 
-	return provisioning, cert, nil
+	return res, nil
 }
 
 // resolveProvisioningFileFor will try to resolve a provisioning for the provided configuration
@@ -99,7 +107,7 @@ func (r signatureResolver) resolveProvisioningFileFor(ctx context.Context,
 	// We then iterate on the list to find a match against the project bundle identifier
 	for _, pp := range pps {
 		// Do we have a bundle identifier match
-		if pp.BundleIdentifier == bundleIdentifier {
+		if pp.BundleIdentifier == "*" || pp.BundleIdentifier == bundleIdentifier {
 			found = true
 			res = pp
 			break
