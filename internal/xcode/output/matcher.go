@@ -36,9 +36,10 @@ func NewMatcher(reporter reporter) []matcherEntry {
 		createMatcherEntry(reporter.ErrorClang, `^(clang: error:(?P<Error>.*))$`),
 		createMatcherEntry(reporter.ErrorCodeSign, `^(Code\s?Sign error:(?P<Error>.*|Code signing is required for product type .* in SDK .*)|No profile matching .* found:.*|Provisioning profile .* doesn't .*|Swift is unavailable on .*|.?Use Legacy Swift Language Version.*)$`),
 		createMatcherEntry(reporter.ErrorCompile, `^(\/.+\/(?P<FileName>.*):.*:.*):\s(?:fatal\s)?error:\s(?P<Error>.*)$`),
-		createMatcherEntry(reporter.ErrorFatal, `^(?:fatal error:(?P<Error>.*))$`),
+		createMatcherEntry(reporter.ErrorFatal, `^(?:(fatal\s)?error:(?P<Error>.*))$`),
 		createMatcherEntry(reporter.ErrorLD, `^(?:ld:(?P<Error>.*))`),
 		createMatcherEntry(reporter.ErrorMissing, `^<unknown>:0:\s(?:error:\s(?P<Error>.*))\s'(?P<FilePath>\/.+\/(?P<FileName>.*\..*))'$`),
+		createMatcherEntry(reporter.ErrorSignature, `^(?P<Error>.*requires a provisioning profile.*|No certificate matching.*)$`),
 		createMatcherEntry(reporter.ErrorSignature, `^(?P<Error>.*requires a provisioning profile.*|No certificate matching.*)$`),
 		createMatcherEntry(reporter.ErrorUndefinedSymbol, `^Undefined symbols for architecture (?P<Arch>.*):$`),
 
