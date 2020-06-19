@@ -1,9 +1,9 @@
 package signature
 
 import (
-	"bytes"
 	"context"
 	"crypto/x509"
+	"dothething/internal/config"
 	"dothething/internal/util"
 	"errors"
 	"io"
@@ -29,12 +29,13 @@ type CertificateService interface {
 }
 
 type certService struct {
-	fs util.FileService
+	config config.Config
+	fs     util.FileService
 }
 
 // NewCertificateService create a new instance of the certificate service
-func NewCertificateService(fs util.FileService) CertificateService {
-	return certService{fs: fs}
+func NewCertificateService(cfg config.Config, fs util.FileService) CertificateService {
+	return certService{config: cfg, fs: fs}
 }
 
 // DecDecodeCertificate allow to validate/decode the content of the io.Reader into a P12Certificate
@@ -85,44 +86,60 @@ func isCertificateFile(info os.FileInfo) bool {
 		strings.HasSuffix(info.Name(), ".p12") // And has the right extension
 }
 
+func (xs certService) readCertificateFile(
+	ctx context.Context,
+	path string,
+	res chan P12Certificate,
+) error {
+	// Open the file content to a reader
+	f, err := xs.fs.Open(path)
+	if err != nil {
+		return err
+	}
+
+	// Defer close the file
+	defer f.Close()
+
+	return xs.decodeRawCertificate(ctx, f, res)
+}
+
+func (xs certService) decodeRawCertificate(
+	ctx context.Context,
+	reader io.Reader,
+	cres chan P12Certificate,
+) error {
+	// Decodes it (temp test password)
+	cert, err := xs.DecodeCertificate(reader, xs.config.CodeSignOption.CertificatePassword)
+	if err != nil {
+		return err
+	}
+
+	// And finally select the action for result
+	select {
+	case cres <- cert: // Populate the certs channel with the valid certificate
+	case <-ctx.Done(): // In case of context cancelation
+		return ctx.Err()
+	}
+
+	return nil
+}
+
 // ResolveInFolder is used to resolve all certificate files into the provided path
 func (xs certService) ResolveInFolder(ctx context.Context, root string) []P12Certificate {
 	certs := make(chan P12Certificate)
 
-	// Running a walk action on the root project to find matching certificate files via the
-	// fileservice helper function
-	g := xs.fs.Walk(
-		ctx,
-		root,
-		isCertificateFile,
-		// For each candidate certificate file
+	// Use the file service walk helper to find candidates certificate file
+	errgroup := xs.fs.Walk(ctx, root, isCertificateFile,
+		// And for each candidate
 		func(ctx context.Context, path string) error {
-			// Which reads the file content
-			b, err := ioutil.ReadFile(path)
-			if err != nil {
-				return err
-			}
-
-			// Decodes it (temp test password)
-			cert, err := xs.DecodeCertificate(bytes.NewReader(b), "test")
-			if err != nil {
-				return err
-			}
-
-			// And finally select the action for result
-			select {
-			case certs <- cert: // Populate the certs channel with the valid certificate
-			case <-ctx.Done(): // In case of context cancelation
-				return ctx.Err()
-			}
-
-			return nil
+			// We try to read a certificate file
+			return xs.readCertificateFile(ctx, path, certs)
 		})
 
 	// Waiting for all the sub goroutines to complete
 	go func() {
 		// For the errgroup
-		g.Wait()
+		errgroup.Wait()
 
 		// And we finally close the certs channel
 		close(certs)
@@ -133,5 +150,13 @@ func (xs certService) ResolveInFolder(ctx context.Context, root string) []P12Cer
 	for c := range certs {
 		res = append(res, c)
 	}
+
+	// Check whether any of the goroutines failed. Since the error group is accumulating the
+	// errors, we don't need to send them (or check for them) in the individual
+	// results sent on the channel.
+	if err := errgroup.Wait(); err != nil {
+		return res
+	}
+
 	return res
 }

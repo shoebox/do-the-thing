@@ -150,14 +150,14 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func getSignedReaderData(source string) io.Reader {
+func getSignedReaderData(source string) io.ReadCloser {
 	// Sign the valid provisioning datas
 	d, _ := pkcs7.NewSignedData([]byte(source))
 
 	// And retrieve the byytes
 	b, _ := d.Finish()
 
-	return bytes.NewReader(b)
+	return ioutil.NopCloser(bytes.NewReader(b))
 }
 
 func TestDecode(t *testing.T) {
@@ -239,6 +239,7 @@ func TestReadCert(t *testing.T) {
 
 		// Making call to the target method
 		err := subject.decodeRawProvisioning(context.Background(),
+			validPath,
 			getSignedReaderData(validProvisioning),
 			cprov)
 
@@ -251,6 +252,7 @@ func TestReadCert(t *testing.T) {
 	assert.Equal(t, "Selfsigners united", pp.TeamName)
 	assert.Equal(t, "12345ABCDE.*", pp.Entitlements.AppID)
 	assert.Equal(t, "B5C2906D-D6EE-476E-AF17-D99AE14644AA", pp.UUID)
+	assert.Equal(t, validPath, pp.FilePath)
 }
 
 func TestReadCertErrorHanding(t *testing.T) {
@@ -266,7 +268,8 @@ func TestReadCertErrorHanding(t *testing.T) {
 
 		// Making call to the target method
 		err = subject.decodeRawProvisioning(context.Background(),
-			strings.NewReader(""),
+			validPath,
+			ioutil.NopCloser(strings.NewReader("")),
 			cprov)
 	}()
 
@@ -341,23 +344,7 @@ func TestReadProvisioningFileHandleError(t *testing.T) {
 	rerr := subject.readProvisioningFile(ctx, path, cprov)
 
 	// Same error should be expected
-	assert.EqualError(t, rerr, err.Error())
-}
-
-func TestReadProvisioningDecoding(t *testing.T) {
-	ctx := context.Background()
-	cprov := make(chan ProvisioningProfile)
-	path := "/fake/path/to/other/file.mobileprovision"
-
-	// setup:
-	r := ioutil.NopCloser(strings.NewReader("hello world")) // r type is io.ReadCloser
-	mockFs.On("Open", path).Return(r, nil)
-
-	// when: Reading provisioning content and waiting for result
-	err := subject.readProvisioningFile(ctx, path, cprov)
-
-	// then: Parsing publc key error should be expected being an ivalid provisioning file
-	assert.EqualError(t, err, ErrorParsingPublicKey.Error())
+	assert.NoError(t, rerr)
 }
 
 func TestWalkOnPath(t *testing.T) {

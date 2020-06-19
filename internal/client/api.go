@@ -20,6 +20,7 @@ type API interface {
 	ActionRunTest() action.ActionRunTest
 	CertificateService() signature.CertificateService
 	DestinationService() destination.Service
+	FileService() util.FileService
 	KeyChainService() keychain.KeyChain
 	ProvisioningService() signature.ProvisioningService
 	SignatureResolver() signature.Resolver
@@ -53,6 +54,7 @@ func (a api) ActionRunTest() action.ActionRunTest                { return a.acti
 func (a api) CertificateService() signature.CertificateService   { return a.certificateService }
 func (a api) DestinationService() destination.Service            { return a.destinationService }
 func (a api) KeyChainService() keychain.KeyChain                 { return a.keychainService }
+func (a api) FileService() util.FileService                      { return a.fileUtil }
 func (a api) ProvisioningService() signature.ProvisioningService { return a.provisioningService }
 func (a api) SignatureResolver() signature.Resolver              { return a.signatureResolver }
 func (a api) XCodeListService() xcode.ListService                { return a.listService }
@@ -78,7 +80,7 @@ func NewAPIClient(config config.Config) (API, error) {
 	res.actionBuild = action.NewBuild(res.xcodeService, executor)
 	res.actionArchive = action.NewArchive(res.xcodeService, executor)
 	res.actionRunTest = action.NewActionRun(res.xcodeService, executor)
-	res.certificateService = signature.NewCertificateService(fileService)
+	res.certificateService = signature.NewCertificateService(config, fileService)
 	res.destinationService = destination.NewDestinationService(res.xcodeService, executor)
 	res.listService = xcode.NewXCodeListService(executor, fileService)
 	res.provisioningService = signature.NewProvisioningService(executor, fileService)

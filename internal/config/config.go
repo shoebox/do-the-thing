@@ -10,5 +10,6 @@ type Config struct {
 }
 
 type SignConfig struct {
-	Path string
+	Path                string
+	CertificatePassword string
 }

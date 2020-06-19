@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -23,10 +24,11 @@ type ProvisioningProfile struct {
 	Entitlements     Entitlements `plist:"Entitlements"`
 	ExpirationDate   time.Time    `plist:"ExpirationDate"`
 	Name             string       `plist:"Name"`
-	Platform         []string     `plist:"Platform"`
-	RawCertificates  [][]byte     `plist:"DeveloperCertificates"`
-	TeamName         string       `plist:"TeamName"`
-	UUID             string       `plist:"UUID"`
+	FilePath         string
+	Platform         []string `plist:"Platform"`
+	RawCertificates  [][]byte `plist:"DeveloperCertificates"`
+	TeamName         string   `plist:"TeamName"`
+	UUID             string   `plist:"UUID"`
 }
 
 // Entitlements provisioning entitlements definition
@@ -121,15 +123,22 @@ func (p provisioningService) walkOnPath(
 	return nil
 }
 
-func (p provisioningService) decodeRawProvisioning(ctx context.Context,
-	reader io.Reader,
-	cprovisioning chan ProvisioningProfile) error {
+func (p provisioningService) decodeRawProvisioning(
+	ctx context.Context,
+	filepath string,
+	reader io.ReadCloser,
+	cprovisioning chan ProvisioningProfile,
+) error {
+	defer reader.Close()
 
 	// Which try to decode the candidate provisioning file
 	dpp, err := p.Decode(ctx, reader)
 	if err != nil {
+		// Here we do not return the error, like we do not want the parent errgroup to fail
 		return err
 	}
+
+	dpp.FilePath = filepath
 
 	//Use a select statement to exit out if context expires
 	select {
@@ -149,14 +158,17 @@ func (p provisioningService) readProvisioningFile(
 	// Open the file to a reader
 	f, err := p.FileService.Open(path)
 	if err != nil {
-		return err
+		return nil
 	}
-
-	// Close the file
 	defer f.Close()
 
 	// Read the content of the file
-	return p.decodeRawProvisioning(ctx, f, cprovisioning)
+	err = p.decodeRawProvisioning(ctx, path, f, cprovisioning)
+
+	// We only print the error and do not return it, as we do not want to have the errgroup stopped
+	log.Println(err)
+
+	return nil
 }
 
 // ResolveProvisioningFilesInFolder walk the provided root path and resolve all provisioning
@@ -169,12 +181,12 @@ func (p provisioningService) ResolveProvisioningFilesInFolder(
 
 	// Channel of provisionings
 	provisionings := make(chan ProvisioningProfile)
-	errgroup := p.FileService.Walk(
-		ctx,
-		root,
-		isProvisioningFile,
-		// For each candidate certificate file
+
+	// Use the file service walk helper to find candidates provisioning file
+	errgroup := p.FileService.Walk(ctx, root, isProvisioningFile,
+		// And for each candidate
 		func(ctx context.Context, path string) error {
+			// We try to read a valid provisioning file
 			return p.readProvisioningFile(ctx, path, provisionings)
 		})
 
