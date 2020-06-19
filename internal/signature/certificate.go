@@ -15,7 +15,10 @@ import (
 )
 
 // P12Certificate is a more convenient alias
-type P12Certificate *x509.Certificate
+type P12Certificate struct {
+	*x509.Certificate
+	FilePath string
+}
 
 var (
 	ErrorFailedToReadFile   = errors.New("Failed to read file")
@@ -60,7 +63,7 @@ func (xs certService) DecodeCertificate(r io.Reader, password string) (P12Certif
 		if key.Type == "CERTIFICATE" {
 			// And we parse the single certificate
 			if cert, err := x509.ParseCertificate(key.Bytes); err == nil {
-				result = cert
+				result = P12Certificate{Certificate: cert}
 				break
 			}
 		}
@@ -100,19 +103,22 @@ func (xs certService) readCertificateFile(
 	// Defer close the file
 	defer f.Close()
 
-	return xs.decodeRawCertificate(ctx, f, res)
+	return xs.decodeRawCertificate(ctx, f, res, path)
 }
 
 func (xs certService) decodeRawCertificate(
 	ctx context.Context,
 	reader io.Reader,
 	cres chan P12Certificate,
+	filepath string,
 ) error {
 	// Decodes it (temp test password)
 	cert, err := xs.DecodeCertificate(reader, xs.config.CodeSignOption.CertificatePassword)
 	if err != nil {
 		return err
 	}
+
+	cert.FilePath = filepath
 
 	// And finally select the action for result
 	select {

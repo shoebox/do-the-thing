@@ -96,7 +96,7 @@ func TestDecoding(t *testing.T) {
 		assert.EqualError(t, err, ErrorFailedToReadFile.Error())
 
 		// and: nothing should be returned
-		assert.Nil(t, data)
+		assert.Empty(t, data)
 	})
 
 	t.Run("Decoding error should be handled", func(t *testing.T) {
@@ -111,7 +111,7 @@ func TestDecoding(t *testing.T) {
 		assert.EqualError(t, err, ErrorFailedToDecryptPEM.Error())
 
 		// and: nothing should be returned
-		assert.Nil(t, data)
+		assert.Empty(t, data)
 	})
 }
 
