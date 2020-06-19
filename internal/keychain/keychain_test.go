@@ -62,9 +62,10 @@ func (s *keychainTestSuite) TestImportCertificateShouldHandleErrors() {
 		[]string{
 			ActionImport,
 			"toto/file.p12",
-			"-k", s.subject.GetPath(),
-			"-P", passwd,
-			"-T", "/usr/bin/codesign",
+			FlagKeychain, s.subject.GetPath(),
+			FlagPassphase, passwd,
+			FlagAppPath, "/usr/bin/codesign",
+			FlagNonExtractable,
 		},
 		"",
 		&errText)

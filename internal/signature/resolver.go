@@ -1,82 +1,123 @@
 package signature
 
 import (
+	"bytes"
 	"context"
 	"dothething/internal/config"
+	"dothething/internal/xcode/pbx"
+	"dothething/internal/xcode/project"
+	"errors"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
-
-	"golang.org/x/sync/errgroup"
 )
 
-type SignatureResolver interface {
-	Resolve(ctx context.Context, c config.Config)
+var ErrNoMatchFound = errors.New("No match found")
+
+// Resolver is the base interface for the signature result
+type Resolver interface {
+	// Resolve will to try to resolve and match of provisioning profile and certficiate aginst the
+	// provided project configuration
+	Resolve(ctx context.Context,
+		c config.Config,
+		p project.Project) (SignatureConfiguration, error)
 }
 
-func NewSignatureResolver(p ProvisioningService) SignatureResolver {
-	return signatureResolver{p}
+type SignatureConfiguration struct {
+	ProvisioningProfile ProvisioningProfile
+	Cert                P12Certificate
+	path                string
 }
 
+// NewResolver creates a new instance of the signature resolver to be use to find the
+// right signature configuration for the provided configuration (aka pair of certificate and
+// provisioning)
+func NewResolver(c CertificateService, p ProvisioningService) Resolver {
+	return signatureResolver{p: p, c: c}
+}
+
+// signatureResolver is the implementation of the SignatureResolver interface
 type signatureResolver struct {
+	c CertificateService
 	p ProvisioningService
 }
 
-func isProvisioningFile(info os.FileInfo) bool {
-	return info.Mode().IsRegular() &&
-		!info.IsDir() &&
-		strings.HasSuffix(info.Name(), ".mobileprovision")
+// Resolve will to try to resolve and match of provisioning profile and certficiate aginst the
+// provided project configuration
+func (r signatureResolver) Resolve(ctx context.Context,
+	config config.Config,
+	p project.Project) (SignatureConfiguration, error) {
+
+	var res SignatureConfiguration
+
+	// Resolving target
+	nativeTarget, err := pbx.FindTargetByName(p.Pbx.Targets, config.Target)
+	if err != nil {
+		return res, err
+	}
+
+	// Resolving build configuration
+	list, err := nativeTarget.BuildConfigurationList.FindConfiguration(config.Configuration)
+	if err != nil {
+		return res, err
+	}
+
+	// Matching the right provisioning file for the project bundle identifier configuration
+	res.ProvisioningProfile, err = r.resolveProvisioningFileFor(ctx,
+		config,
+		list.BuildSettings["PRODUCT_BUNDLE_IDENTIFIER"])
+	if err != nil {
+		return res, err
+	}
+
+	// And trying find a matching certificate to pair with the bundle identifier
+	certs := r.c.ResolveInFolder(ctx, config.CodeSignOption.Path)
+	var found bool
+
+	// The provisioning public key to match on
+	provisioningPublicKey := res.ProvisioningProfile.Certificates[0].Raw
+
+	// We iterate on all certificates found in the path
+	for _, c := range certs {
+		// We check if the certificate public key is matching the provisioning's
+		if bytes.Compare(c.Raw, provisioningPublicKey) == 0 {
+			// If yes we created the new pair object with those.
+			res.Cert = c
+			found = true
+		}
+	}
+
+	if !found {
+		return res, errors.New("Could not find a matching certificate")
+	}
+
+	return res, nil
 }
 
-func (r signatureResolver) Resolve(ctx context.Context, c config.Config) {
-	// TODO: Temp test path
-	pps := r.resolveProvisioningFilesInFolder(ctx, c.CodeSignOption.Path)
+// resolveProvisioningFileFor will try to resolve a provisioning for the provided configuration
+func (r signatureResolver) resolveProvisioningFileFor(ctx context.Context,
+	c config.Config,
+	bundleIdentifier string) (ProvisioningProfile, error) {
+
+	var res ProvisioningProfile
+	var err error
+	var found bool
+
+	// Resolving all provisining in the folder
+	pps := r.p.ResolveProvisioningFilesInFolder(ctx, c.CodeSignOption.Path)
+
+	// We then iterate on the list to find a match against the project bundle identifier
 	for _, pp := range pps {
-		fmt.Println(pp.Name)
-	}
-}
-
-func (r signatureResolver) resolveProvisioningFilesInFolder(ctx context.Context, root string) []ProvisioningProfile {
-	g, ctx := errgroup.WithContext(ctx)
-	paths := make(chan string)
-	cp := make(chan ProvisioningProfile)
-	g.Go(func() error {
-		defer close(paths)
-		return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-			if err == nil && isProvisioningFile(info) {
-				p := path
-				g.Go(func() error {
-					dpp, err := r.p.Decode(ctx, p)
-					if err != nil {
-						return err
-					}
-
-					select {
-					case cp <- dpp:
-					case <-ctx.Done():
-						return ctx.Err()
-					}
-					return nil
-				})
-			}
-			return nil
-		})
-	})
-
-	go func() {
-		g.Wait()
-		close(cp)
-	}()
-
-	res := []ProvisioningProfile{}
-	for pp := range cp {
-		res = append(res, pp)
+		// Do we have a bundle identifier match
+		if pp.BundleIdentifier == "*" || pp.BundleIdentifier == bundleIdentifier {
+			found = true
+			res = pp
+			break
+		}
 	}
 
-	return res
-}
+	// We have not found a match, raising an error
+	if !found {
+		return res, errors.New("ProvisioningProfile not found")
+	}
 
-func parseProvisioning(r io.ByteReader) {
+	return res, err
 }

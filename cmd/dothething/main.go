@@ -2,14 +2,14 @@ package main
 
 import (
 	"context"
-	"dothething/internal/action"
-	"dothething/internal/destination"
+	"dothething/internal/client"
+	"dothething/internal/config"
 	"dothething/internal/keychain"
+	"dothething/internal/signature"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
 	"dothething/internal/xcode/project"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -17,70 +17,81 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var config xcode.Config
+var cfg config.Config
 var xcb xcode.BuildService
-var listService xcode.ListService
-var pj project.ProjectService
-var e util.Executor
+var fileUtil util.FileService
+var serviceList xcode.ListService
+
+//var serviceProject project.ProjectService
+var serviceProvisioning signature.ProvisioningService
+var executor util.Executor
+var targetProject project.Project
+
+var api client.API
 
 func main() {
 	// logger
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
 	// Context
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	config = xcode.Config{
-		Path:   "/Users/johann.martinache/Desktop/tmp/Swiftstraints/Swiftstraints.xcodeproj",
-		Scheme: "Swiftstraints iOS",
+	cfg = config.Config{
+		Path:          "/Users/johann.martinache/Desktop/tmp/BookStore-iOS/BookStore.xcodeproj",
+		Scheme:        "BookStore",
+		Configuration: "Release",
+		Target:        "BookStore",
+		CodeSignOption: config.SignConfig{
+			Path: "",
+		},
 	}
 
-	//
-	// path := "/Users/johann.martinache/Desktop/tmp/Swiftstraints/Swiftstraints.xcodeproj"
-	//path := "/Users/johann.martinache/Desktop/massive/bein/bein-apple/beIN.xcodeproj"
+	var err error
+	api, err = client.NewAPIClient(cfg)
+	if err != nil {
+		panic(err)
+	}
 
-	// f := util.IoUtilFileService{}
-	e = util.NewExecutor()
-	xcb = xcode.NewService(e, config.Path)
-	pj = project.NewProjectService(ioutil.ReadFile, xcb, e)
-	prj, err := pj.Parse(ctx)
-	fmt.Printf("Project %#v %v\n", prj, err)
-	fmt.Printf("Project %#v %v\n", prj.Schemes, err)
-
+	err = resolveSignature(ctx)
+	fmt.Println("err", err)
 	build()
 	archive()
-	// unitTest(e, xcb)
+	unitTest()
+}
 
-	// List service
-	//listService := xcode.NewXCodeListService(e, f)
-	//fmt.Println(listService)
-	//listService.List(ctx)
+func listXCodeInstance(ctx context.Context) error {
+	installs, err := api.XCodeListService().List(ctx)
+	if err != nil {
+		return err
+	}
 
-	/*
-		list, err := listService.List(ctx)
-		fmt.Println("Xcode list :::", list, err)
+	for _, i := range installs {
+		fmt.Println(i.Path, i.Version)
+	}
 
-		//
-		if err := selectService(e, listService); err != nil {
-			log.Error().AnErr("Error", err).Msg("Select service error")
-		}
+	return nil
+}
 
-		//
-		if err := unitTest(e, xcodeService); err != nil {
-			log.Error().AnErr("Error", err).Msg("Unit test error")
-		}
+func resolveSignature(ctx context.Context) error {
+	pj, err := api.XCodeProjectService().Parse(ctx)
+	if err != nil {
+		return err
+	}
 
-		if err := keychainTest(e); err != nil {
-			log.Error().AnErr("Error", err).Msg("Keychain error")
-		}
-		/*
-			// # find the id that points to the location of the encoded file in the .xcresult bundle
-			// id=$(xcrun xcresulttool get --format json --path Tests.xcresult | jq '.actions._values[]' | jq -r '.actionResult.logRef.id._value')
-			// # export the log found at the the id in the .xcresult bundle
-			// xcrun xcresulttool export --path Tests.xcresult --id $id --output-path TestsStdErrorStdout.log --type file
-	*/
+	if err := pj.ValidateConfiguration(cfg); err != nil {
+		log.Panic().AnErr("Error", err)
+
+		return err
+	}
+
+	provisioning, p12, err := api.SignatureResolver().Resolve(ctx, cfg, pj)
+	if err != nil {
+		return err
+	}
+	fmt.Println(provisioning, p12, err)
+	return nil
 }
 
 func selectService(e util.Executor, l xcode.ListService) error {
@@ -97,41 +108,48 @@ func selectService(e util.Executor, l xcode.ListService) error {
 	return nil
 }
 
-func build() {
+func build() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	a := action.NewBuild(xcb, e)
-	a.Run(ctx, config)
+	return api.
+		ActionBuild().
+		Run(ctx, cfg)
 }
 
-func archive() {
+func archive() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	a := action.NewArchive(xcb, e)
-	a.Run(ctx, config)
+	return api.
+		ActionArchive().
+		Run(ctx, cfg)
 }
 
-func unitTest(e util.Executor, x xcode.BuildService) error {
+func unitTest() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	dest := destination.NewDestinationService(x, e)
-	dd, err := dest.List(ctx, "Swiftstraints iOS")
+	// Retrieving the destination for the scheme
+	dd, err := api.
+		DestinationService().
+		List(ctx, cfg.Scheme)
+
 	if err != nil {
 		return err
 	}
 
+	// As a test for now use the last destination
 	d := dd[len(dd)-1]
-	defer dest.ShutDown(ctx, d)
 
-	if err := dest.Boot(ctx, d); err != nil {
-		return err
-	}
+	// Shutting it down deferred
+	defer api.DestinationService().ShutDown(ctx, d)
 
-	a := action.NewActionRun(x, e)
-	return a.Run(ctx, d, config)
+	// Booting it now
+	api.DestinationService().Boot(ctx, d)
+
+	// Running the test
+	return api.ActionRunTest().Run(ctx, d, cfg)
 }
 
 func keychainTest(e util.Executor) error {
@@ -145,7 +163,7 @@ func keychainTest(e util.Executor) error {
 	}
 
 	// Delete it at the end
-	defer k.Delete(ctx)
+	// defer k.Delete(ctx)
 
 	// Create the new keychain
 	err = k.Create(ctx, "password")

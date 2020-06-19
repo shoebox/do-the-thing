@@ -3,6 +3,7 @@ package project
 import (
 	"bytes"
 	"context"
+	"dothething/internal/config"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
 	"dothething/internal/xcode/pbx"
@@ -25,6 +26,22 @@ type Project struct {
 	Pbx            pbx.PBXProject
 	Schemes        []string `json:"schemes"`
 	Targets        []string `json:"targets"`
+}
+
+func (p Project) ValidateConfiguration(c config.Config) error {
+	found := false
+	for _, s := range p.Schemes {
+		if s == c.Scheme {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return errors.New("Invalid scheme for the project")
+	}
+
+	return nil
 }
 
 // ProjectService interface

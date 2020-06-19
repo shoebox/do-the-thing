@@ -2,6 +2,7 @@ package action
 
 import (
 	"context"
+	"dothething/internal/config"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
 
@@ -10,7 +11,7 @@ import (
 )
 
 type ActionBuild interface {
-	Run(ctx context.Context, config xcode.Config) error
+	Run(ctx context.Context, config config.Config) error
 }
 
 func NewBuild(xcode xcode.BuildService, exec util.Executor) ActionBuild {
@@ -22,7 +23,7 @@ type actionBuild struct {
 	xcode xcode.BuildService
 }
 
-func (a actionBuild) Run(ctx context.Context, config xcode.Config) error {
+func (a actionBuild) Run(ctx context.Context, config config.Config) error {
 	xce := xcode.ParseXCodeBuildError(a.build(ctx, config))
 	if xce != nil {
 		color.New(color.FgHiRed, color.Bold).Println(xce.Error())
@@ -31,7 +32,7 @@ func (a actionBuild) Run(ctx context.Context, config xcode.Config) error {
 	return xce
 }
 
-func (a actionBuild) build(ctx context.Context, config xcode.Config) error {
+func (a actionBuild) build(ctx context.Context, config config.Config) error {
 	log.Info().Msg("Building")
 	return RunCmd(a.exec.CommandContext(ctx,
 		xcode.Cmd,

@@ -1,13 +1,18 @@
 package signature
 
 import (
+	"bytes"
 	"context"
 	"dothething/internal/utiltest"
 	"errors"
+	"io"
+	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.mozilla.org/pkcs7"
 )
 
 const validProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
@@ -15,7 +20,7 @@ const validProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0">
 <dict>
 	<key>AppIDName</key>
-	<string>abc.def.ghi</string>
+	<string>dummy name</string>
 	<key>ApplicationIdentifierPrefix</key>
 	<array>
 	<string>12345ABCDE</string>
@@ -132,81 +137,66 @@ const validPath = "/path/to/file.provisioning"
 const invalidPath = "/path/to/file2.provisioning"
 
 var mockExec *utiltest.MockExecutor
+var mockFs *utiltest.MockFileService
 var subject provisioningService
+
+var readerValid io.Reader
 
 func TestMain(m *testing.M) {
 	mockExec = new(utiltest.MockExecutor)
-	subject = provisioningService{mockExec}
-
-	mockExec.MockCommandContext(Security,
-		[]string{Cms, ArgDecodeCMS, ArgInlineFile, validPath},
-		validProvisioning,
-		nil)
+	mockFs = new(utiltest.MockFileService)
+	subject = provisioningService{Executor: mockExec, FileService: mockFs}
 
 	os.Exit(m.Run())
 }
 
+func getSignedReaderData(source string) io.ReadCloser {
+	// Sign the valid provisioning datas
+	d, _ := pkcs7.NewSignedData([]byte(source))
+
+	// And retrieve the byytes
+	b, _ := d.Finish()
+
+	return ioutil.NopCloser(bytes.NewReader(b))
+}
+
 func TestDecode(t *testing.T) {
 	// when:
-	pp, err := subject.Decode(context.Background(), validPath)
+	pp, err := subject.Decode(context.Background(), getSignedReaderData(validProvisioning))
 
 	// then:
 	assert.NoError(t, err)
-	assert.Equal(t, "abc.def.ghi", pp.AppID)
-	assert.Equal(t, []string{"12345ABCDE"}, pp.TeamIdentifier)
+
+	// and:
 	assert.Equal(t, "Selfsigners united", pp.TeamName)
+	assert.Equal(t, "12345ABCDE.*", pp.Entitlements.AppID)
 	assert.Equal(t, "B5C2906D-D6EE-476E-AF17-D99AE14644AA", pp.UUID)
 	assert.NoError(t, err)
 }
 
 func TestDecodeShouldHandleErrors(t *testing.T) {
-	// setup:
-	mockExec.MockCommandContext(Security,
-		[]string{Cms, ArgDecodeCMS, ArgInlineFile, invalidPath},
-		"",
-		errors.New("error text"))
-
 	// when:
-	pp, err := subject.Decode(context.Background(), invalidPath)
+	pp, err := subject.Decode(context.Background(), strings.NewReader(""))
 
 	// then:
-	assert.EqualError(t, err, "error text")
+	assert.EqualError(t, err, ErrorParsingPublicKey.Error())
 	assert.Empty(t, pp)
 }
 
 func TestDecodeShouldHandleDecodingErrors(t *testing.T) {
-	// setup:
-	mockExec.MockCommandContext(Security,
-		[]string{Cms, ArgDecodeCMS, ArgInlineFile, "/fake/path/fake-file.mobileprovision"},
-		`{"json":"text"}`,
-		nil)
-
 	// when:
-	pp, err := subject.Decode(context.Background(), "/fake/path/fake-file.mobileprovision")
+	_, err := subject.Decode(context.Background(), getSignedReaderData("invalid"))
 
 	// then:
 	assert.EqualError(t, err, "Failed to decode the provisioning file")
-	assert.Empty(t, pp)
 }
 
 func TestDecodeCertShouldHandleDecodingErrors(t *testing.T) {
-	// setup:
-	mockExec.MockCommandContext(Security,
-		[]string{Cms, ArgDecodeCMS, ArgInlineFile, "/toto/tutu/fake.mobileprovision"},
-		invalidProvisioning,
-		nil)
-
 	// when:
-	pp, err := subject.Decode(context.Background(), "/toto/tutu/fake.mobileprovision")
+	_, err := subject.Decode(context.Background(), strings.NewReader(invalidProvisioning))
 
 	// then:
 	assert.EqualError(t, err, "Failed to parse the provisioning file certificate")
-
-	// and:
-	assert.Equal(t, "abc.def.ghi", pp.AppID)
-	assert.Equal(t, []string{"12345ABCDE"}, pp.TeamIdentifier)
-	assert.Equal(t, "Selfsigners united", pp.TeamName)
-	assert.Equal(t, "B5C2906D-D6EE-476E-AF17-D99AE14644AA", pp.UUID)
 }
 
 func TestFileDecodingProvisioningExecutation(t *testing.T) {
@@ -214,7 +204,7 @@ func TestFileDecodingProvisioningExecutation(t *testing.T) {
 	ctx := context.Background()
 
 	// when:
-	b, err := subject.decodeProvisioning(ctx, validPath)
+	b, err := subject.decodeProvisioning(ctx, getSignedReaderData(validProvisioning))
 
 	// then:
 	assert.NoError(t, err)
@@ -229,11 +219,174 @@ func TestParseRawX509Certificates(t *testing.T) {
 		// setup:
 		data := [][]byte{[]byte("Hello world")}
 
-		// when:
+		// when: Parsing certificate datas
 		res, err := parseRawX509Certificates(data)
 
-		// then:
+		// then: An error should be returned
 		assert.EqualValues(t, ErrorParsingPublicKey, err)
 		assert.Nil(t, res)
 	})
 }
+
+func TestReadCert(t *testing.T) {
+	// setup:
+	cprov := make(chan ProvisioningProfile)
+
+	// when:
+	go func() {
+		// Defer closing the channel
+		defer close(cprov)
+
+		// Making call to the target method
+		err := subject.decodeRawProvisioning(context.Background(),
+			validPath,
+			getSignedReaderData(validProvisioning),
+			cprov)
+
+		// then: Asserting no errors
+		assert.NoError(t, err)
+	}()
+
+	// then: The value in the channel should be populated
+	pp := <-cprov
+	assert.Equal(t, "Selfsigners united", pp.TeamName)
+	assert.Equal(t, "12345ABCDE.*", pp.Entitlements.AppID)
+	assert.Equal(t, "B5C2906D-D6EE-476E-AF17-D99AE14644AA", pp.UUID)
+	assert.Equal(t, validPath, pp.FilePath)
+}
+
+func TestReadCertErrorHanding(t *testing.T) {
+	// setup:
+	cprov := make(chan ProvisioningProfile)
+
+	var err error
+
+	// when:
+	go func() {
+		// Defer closing the channel
+		defer close(cprov)
+
+		// Making call to the target method
+		err = subject.decodeRawProvisioning(context.Background(),
+			validPath,
+			ioutil.NopCloser(strings.NewReader("")),
+			cprov)
+	}()
+
+	// then: Ready the results
+	res := <-cprov
+
+	// It should be empty
+	assert.Empty(t, res)
+
+	// and: A parsing error should have been raised
+	assert.EqualError(t, err, "Failed to parse the provisioning file certificate")
+}
+
+func TestIsProvisioning(t *testing.T) {
+	// setup:
+	cases := []struct {
+		fi    mockedFileInfo
+		name  string
+		valid bool
+	}{
+		{
+			fi:    mockedFileInfo{fileMode: 0, isDir: false, name: ""},
+			name:  "Invalid file mode",
+			valid: false,
+		},
+		{
+			fi:    mockedFileInfo{fileMode: os.ModeAppend, isDir: true, name: "toto.mobileprovision"},
+			name:  "Should not be a directory",
+			valid: false,
+		},
+		{
+			fi:    mockedFileInfo{fileMode: os.ModeAppend, isDir: false, name: "toto.mobileprovision"},
+			name:  "Valid mode",
+			valid: true,
+		},
+		{
+			fi:    mockedFileInfo{fileMode: os.ModeAppend, isDir: false, name: "toto.prov"},
+			name:  "Should have the right extension",
+			valid: false,
+		},
+		{
+			fi:    mockedFileInfo{fileMode: os.ModeIrregular, isDir: false, name: "toto.mobileprovision"},
+			name:  "Should be regular mode",
+			valid: false,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// when:
+			res := isProvisioningFile(c.fi)
+
+			// then:
+			assert.EqualValues(t, c.valid, res)
+		})
+	}
+}
+
+func TestReadProvisioningFileHandleError(t *testing.T) {
+	ctx := context.Background()
+	cprov := make(chan ProvisioningProfile)
+	path := "/fake/path/to/file.mobileprovision"
+
+	// Create a readCloser from the sample string
+	r := ioutil.NopCloser(strings.NewReader("hello world")) // r type is io.ReadCloser
+	err := errors.New("Error test")
+
+	// Mock response
+	mockFs.On("Open", path).Return(r, err)
+
+	// when: Reading provisioning content and waiting for result
+	rerr := subject.readProvisioningFile(ctx, path, cprov)
+
+	// Same error should be expected
+	assert.NoError(t, rerr)
+}
+
+func TestWalkOnPath(t *testing.T) {
+	path := "/fake/path/to/provisiong"
+
+	// setup:
+	cpath := make(chan string)
+	mockedFileInfo := mockedFileInfo{fileMode: os.ModeAppend, isDir: false, name: "toto.mobileprovision"}
+
+	// when: Walking of the provided path
+	go func() {
+		//
+		defer close(cpath)
+
+		// when walking the path
+		err := subject.walkOnPath(context.Background(),
+			path,
+			cpath,
+			mockedFileInfo)
+
+		// then: We should expect no error
+		assert.NoError(t, err)
+	}()
+
+	// and: the channel should be populated
+	p := <-cpath
+	assert.EqualValues(t, path, p)
+}
+
+// mockedFileInfo is a mock of the os.FileInfo class to be able to test different configuration
+type mockedFileInfo struct {
+	os.FileInfo             // Embed this so we only need to add methods used by testable functions
+	fileMode    os.FileMode // mode
+	isDir       bool        // Do the file is a directory
+	name        string      // file base name
+}
+
+// Name will return the configured value for the mock of the name field
+func (m mockedFileInfo) Name() string { return m.name }
+
+// Mode will return the configure value for the mock of the fileMode field
+func (m mockedFileInfo) Mode() os.FileMode { return m.fileMode }
+
+// IsDir will return the configure value for the mock of the isDir field
+func (m mockedFileInfo) IsDir() bool { return m.isDir }

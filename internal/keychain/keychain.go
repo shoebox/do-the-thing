@@ -27,6 +27,7 @@ const (
 	FlagPartitionList      = "-S"
 	FlagPassword           = "-p"
 	FlagPassphase          = "-P"
+	FlagNonExtractable     = "-x"
 )
 
 type KeyChain interface {
@@ -88,7 +89,8 @@ func (k keychain) ImportCertificate(ctx context.Context, filePath, password, ide
 		filePath,
 		FlagKeychain, k.filePath, // Specify keychain into which item(s) will be imported.
 		FlagPassphase, password, // Specify the unwrapping passphrase immediately.
-		FlagAppPath, "/usr/bin/codesign"). // Specify an application which may access the imported key;
+		FlagAppPath, "/usr/bin/codesign", // Specify an application which may access the imported key;
+		FlagNonExtractable).
 		Output()
 
 	return err

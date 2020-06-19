@@ -2,6 +2,7 @@ package action
 
 import (
 	"context"
+	"dothething/internal/config"
 	"dothething/internal/destination"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
@@ -11,7 +12,7 @@ import (
 )
 
 type ActionRunTest interface {
-	Run(ctx context.Context, dest destination.Destination, config xcode.Config) error
+	Run(ctx context.Context, dest destination.Destination, config config.Config) error
 }
 
 type actionRunTest struct {
@@ -23,7 +24,7 @@ func NewActionRun(service xcode.BuildService, exec util.Executor) ActionRunTest 
 	return actionRunTest{xcode: service, exec: exec}
 }
 
-func (a actionRunTest) Run(ctx context.Context, d destination.Destination, config xcode.Config) error {
+func (a actionRunTest) Run(ctx context.Context, d destination.Destination, config config.Config) error {
 	// Creating a temp folder to contains the test results
 	path, err := util.TempFileName("dothething", ".xcresult")
 	if err != nil {
@@ -40,7 +41,7 @@ func (a actionRunTest) Run(ctx context.Context, d destination.Destination, confi
 }
 func (a actionRunTest) runXCodebuildTest(ctx context.Context,
 	path string,
-	config xcode.Config,
+	config config.Config,
 	dest destination.Destination) error {
 	fmt.Println(color.BlueString("Running test on %v (%v)", dest.Name, dest.Id))
 
@@ -48,7 +49,6 @@ func (a actionRunTest) runXCodebuildTest(ctx context.Context,
 		xcode.Cmd,
 		a.xcode.GetArg(),
 		a.xcode.GetProjectPath(),
-		xcode.ActionClean,
 		xcode.ActionTest,
 		xcode.FlagScheme, config.Scheme,
 		xcode.FlagDestination, fmt.Sprintf("id=%s", dest.Id),

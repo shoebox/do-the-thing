@@ -1,6 +1,7 @@
 package signature
 
 import (
+	"dothething/internal/utiltest"
 	"errors"
 	"os"
 	"strings"
@@ -8,6 +9,61 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
+
+var fs *utiltest.MockFileService
+var cs certService
+
+func Main(m *testing.M) {
+	fs = new(utiltest.MockFileService)
+	cs = certService{fs: fs}
+
+	os.Exit(m.Run())
+}
+
+func TestIsCertFile(t *testing.T) {
+	// setup:
+	cases := []struct {
+		fi    mockedFileInfo
+		name  string
+		valid bool
+	}{
+		{
+			fi:    mockedFileInfo{fileMode: 0, isDir: false, name: ""},
+			name:  "Invalid file mode",
+			valid: false,
+		},
+		{
+			fi:    mockedFileInfo{fileMode: os.ModeAppend, isDir: true, name: "toto.p12"},
+			name:  "Should not be a directory",
+			valid: false,
+		},
+		{
+			fi:    mockedFileInfo{fileMode: os.ModeAppend, isDir: false, name: "toto.p12"},
+			name:  "Valid mode",
+			valid: true,
+		},
+		{
+			fi:    mockedFileInfo{fileMode: os.ModeAppend, isDir: false, name: "toto.prov"},
+			name:  "Should have the right extension",
+			valid: false,
+		},
+		{
+			fi:    mockedFileInfo{fileMode: os.ModeIrregular, isDir: false, name: "toto.p12"},
+			name:  "Should be regular mode",
+			valid: false,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// when:
+			res := isCertificateFile(c.fi)
+
+			// then:
+			assert.EqualValues(t, c.valid, res)
+		})
+	}
+}
 
 func TestDecoding(t *testing.T) {
 	t.Run("Valid decoding should succeed", func(t *testing.T) {
@@ -17,7 +73,7 @@ func TestDecoding(t *testing.T) {
 		assert.NotNil(t, data)
 
 		// when:
-		b, err := DecodeCertificate(data, "p4ssword")
+		b, err := cs.DecodeCertificate(data, "p4ssword")
 
 		// then:
 		assert.NoError(t, err)
@@ -33,7 +89,7 @@ func TestDecoding(t *testing.T) {
 		reader := errReader(0)
 
 		// when:
-		data, err := DecodeCertificate(reader, "pass")
+		data, err := cs.DecodeCertificate(reader, "pass")
 
 		// then:
 		assert.NotNil(t, err)
@@ -48,7 +104,7 @@ func TestDecoding(t *testing.T) {
 		reader := strings.NewReader("invalid")
 
 		// when:
-		data, err := DecodeCertificate(reader, "pass")
+		data, err := cs.DecodeCertificate(reader, "pass")
 
 		// then:
 		assert.NotNil(t, err)
