@@ -7,7 +7,6 @@ import (
 	"dothething/internal/xcode/pbx"
 	"dothething/internal/xcode/project"
 	"errors"
-	"fmt"
 )
 
 var ErrNoMatchFound = errors.New("No match found")
