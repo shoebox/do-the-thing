@@ -86,11 +86,11 @@ func resolveSignature(ctx context.Context) error {
 		return err
 	}
 
-	provisioning, p12, err := api.SignatureResolver().Resolve(ctx, cfg, pj)
+	res, err := api.SignatureResolver().Resolve(ctx, cfg, pj)
 	if err != nil {
 		return err
 	}
-	fmt.Println(provisioning, p12, err)
+	fmt.Println(res, err)
 	return nil
 }
 
