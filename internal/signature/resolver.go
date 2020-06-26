@@ -7,6 +7,7 @@ import (
 	"dothething/internal/xcode/pbx"
 	"dothething/internal/xcode/project"
 	"errors"
+	"fmt"
 )
 
 var ErrNoMatchFound = errors.New("No match found")
@@ -76,6 +77,7 @@ func (r signatureResolver) Resolve(ctx context.Context,
 
 	// We iterate on all certificates found in the path
 	for _, c := range certs {
+		fmt.Println(string(c.Raw))
 		// We check if the certificate public key is matching the provisioning's
 		if bytes.Compare(c.Raw, provisioningPublicKey) == 0 {
 			// If yes we created the new pair object with those.

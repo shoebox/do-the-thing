@@ -4,7 +4,6 @@ import (
 	"context"
 	"dothething/internal/client"
 	"dothething/internal/config"
-	"dothething/internal/keychain"
 	"dothething/internal/signature"
 	"dothething/internal/util"
 	"dothething/internal/xcode"
@@ -44,7 +43,8 @@ func main() {
 		Configuration: "Release",
 		Target:        "BookStore",
 		CodeSignOption: config.SignConfig{
-			Path: "",
+			CertificatePassword: "abc12345",
+			Path:                "/users/johann.martinache/Desktop/dummy",
 		},
 	}
 
@@ -56,9 +56,11 @@ func main() {
 
 	err = resolveSignature(ctx)
 	fmt.Println("err", err)
-	build()
+
+	keychainTest()
+	// build()
 	archive()
-	unitTest()
+	// unitTest()
 }
 
 func listXCodeInstance(ctx context.Context) error {
@@ -90,7 +92,8 @@ func resolveSignature(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(res, err)
+	fmt.Println("res :::", res)
+
 	return nil
 }
 
@@ -152,27 +155,21 @@ func unitTest() error {
 	return api.ActionRunTest().Run(ctx, d, cfg)
 }
 
-func keychainTest(e util.Executor) error {
+func keychainTest() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
-
-	// Keychain service
-	k, err := keychain.NewKeyChain(e)
-	if err != nil {
-		return err
-	}
 
 	// Delete it at the end
 	// defer k.Delete(ctx)
 
 	// Create the new keychain
-	err = k.Create(ctx, "password")
+	err := api.KeyChainService().Create(ctx, "password")
 	if err != nil {
 		return err
 	}
 
 	// Import the certificate
-	err = k.ImportCertificate(ctx, "assets/Certificate.p12", "p4ssword", "123")
+	err = api.KeyChainService().ImportCertificate(ctx, "/Users/johann.martinache/Desktop/dummy/dummy.p12", "abc12345", "123")
 	if err != nil {
 		return err
 	}
