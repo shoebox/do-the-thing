@@ -3,11 +3,13 @@ package signature
 import (
 	"context"
 	"dothething/internal/config"
+	"dothething/internal/xcode/pbx"
 	"dothething/internal/xcode/project"
 	"fmt"
 )
 
 type Service interface {
+	Run(ctx context.Context, config config.Config) error
 }
 
 type service struct {
@@ -34,14 +36,24 @@ func (s service) Run(ctx context.Context, config config.Config) error {
 		return err
 	}
 
-	//
-	s.ResolveFor(config.Target, config.Configuration)
+	// Resolve build configuration to target
+	bc, err := s.ResolveFor(config.Target, config.Configuration)
+	if err != nil {
+		return err
+	}
+
+	// Resolve configuration for bundle identifier
+	sc, err := s.Resolver.Resolve(ctx, config.CodeSignOption.Path, bc.BuildSettings["PRODUCT_BUNDLE_IDENTIFIER"])
+	if err != nil {
+		return err
+	}
+	fmt.Println(sc)
 
 	return nil
 }
 
-func (s service) ResolveFor(t string, config string) ([]string, error) {
-	var res []string
+func (s service) ResolveFor(t string, config string) (pbx.XCBuildConfiguration, error) {
+	var res pbx.XCBuildConfiguration
 	// Resolving t
 	nativeTarget, err := s.Project.Pbx.FindTargetByName(t)
 	if err != nil {
@@ -49,12 +61,5 @@ func (s service) ResolveFor(t string, config string) ([]string, error) {
 	}
 
 	// Resolving build configuration
-	bc, err := nativeTarget.BuildConfigurationList.FindConfiguration(config)
-	if err != nil {
-		return res, err
-	}
-
-	fmt.Println(bc, err)
-
-	return res, nil
+	return nativeTarget.BuildConfigurationList.FindConfiguration(config)
 }

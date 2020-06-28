@@ -23,7 +23,7 @@ type API interface {
 	FileService() util.FileService
 	KeyChainService() keychain.KeyChain
 	ProvisioningService() signature.ProvisioningService
-	SignatureResolver() signature.Resolver
+	Signature() signature.Service
 	XCodeProjectService() project.ProjectService
 	XCodeListService() xcode.ListService
 	XCodeSelectService() xcode.SelectService
@@ -45,6 +45,7 @@ type api struct {
 	runTest             action.ActionRunTest
 	selectService       xcode.SelectService
 	signatureResolver   signature.Resolver
+	signatureService    signature.Service
 	xcodeService        xcode.BuildService
 }
 
@@ -56,7 +57,7 @@ func (a api) DestinationService() destination.Service            { return a.dest
 func (a api) KeyChainService() keychain.KeyChain                 { return a.keychainService }
 func (a api) FileService() util.FileService                      { return a.fileUtil }
 func (a api) ProvisioningService() signature.ProvisioningService { return a.provisioningService }
-func (a api) SignatureResolver() signature.Resolver              { return a.signatureResolver }
+func (a api) Signature() signature.Service                       { return a.signatureService }
 func (a api) XCodeListService() xcode.ListService                { return a.listService }
 func (a api) XCodeProjectService() project.ProjectService        { return a.projectService }
 func (a api) XCodeSelectService() xcode.SelectService            { return a.selectService }
@@ -86,6 +87,8 @@ func NewAPIClient(config config.Config) (API, error) {
 	res.provisioningService = signature.NewProvisioningService(executor, fileService)
 	res.selectService = xcode.NewSelectService(res.listService, executor)
 	res.signatureResolver = signature.NewResolver(res.certificateService, res.provisioningService)
+
+	res.signatureService = signature.New(res.projectService, res.signatureResolver)
 
 	return res, err
 }

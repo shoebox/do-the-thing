@@ -57,9 +57,9 @@ func main() {
 	err = resolveSignature(ctx)
 	fmt.Println("err", err)
 
-	keychainTest()
+	// keychainTest()
 	// build()
-	archive()
+	// archive()
 	// unitTest()
 }
 
@@ -77,24 +77,9 @@ func listXCodeInstance(ctx context.Context) error {
 }
 
 func resolveSignature(ctx context.Context) error {
-	pj, err := api.XCodeProjectService().Parse(ctx)
-	if err != nil {
-		return err
-	}
-
-	if err := pj.ValidateConfiguration(cfg); err != nil {
-		log.Panic().AnErr("Error", err)
-
-		return err
-	}
-
-	res, err := api.SignatureResolver().Resolve(ctx, cfg, pj)
-	if err != nil {
-		return err
-	}
-	fmt.Println("res :::", res)
-
-	return nil
+	return api.
+		Signature().
+		Run(ctx, cfg)
 }
 
 func selectService(e util.Executor, l xcode.ListService) error {

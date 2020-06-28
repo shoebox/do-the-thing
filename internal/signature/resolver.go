@@ -3,8 +3,6 @@ package signature
 import (
 	"bytes"
 	"context"
-	"dothething/internal/config"
-	"dothething/internal/xcode/project"
 	"errors"
 	"fmt"
 )
@@ -16,8 +14,8 @@ type Resolver interface {
 	// Resolve will to try to resolve and match of provisioning profile and certficiate aginst the
 	// provided project configuration
 	Resolve(ctx context.Context,
-		c config.Config,
-		p project.Project) (SignatureConfiguration, error)
+		path string,
+		bundleIdentifier string) (SignatureConfiguration, error)
 }
 
 type SignatureConfiguration struct {
@@ -42,33 +40,23 @@ type signatureResolver struct {
 // Resolve will to try to resolve and match of provisioning profile and certficiate aginst the
 // provided project configuration
 func (r signatureResolver) Resolve(ctx context.Context,
-	config config.Config,
-	p project.Project) (SignatureConfiguration, error) {
+	// config config.Config,
+	path string,
+	bundleIdentifier string) (SignatureConfiguration, error) {
 
+	var err error
 	var res SignatureConfiguration
-
-	// Resolving target
-	nativeTarget, err := p.Pbx.FindTargetByName(config.Target)
-	if err != nil {
-		return res, err
-	}
-
-	// Resolving build configuration
-	list, err := nativeTarget.BuildConfigurationList.FindConfiguration(config.Configuration)
-	if err != nil {
-		return res, err
-	}
 
 	// Matching the right provisioning file for the project bundle identifier configuration
 	res.ProvisioningProfile, err = r.resolveProvisioningFileFor(ctx,
-		config,
-		list.BuildSettings["PRODUCT_BUNDLE_IDENTIFIER"])
+		path,
+		bundleIdentifier)
 	if err != nil {
 		return res, err
 	}
 
 	// And trying find a matching certificate to pair with the bundle identifier
-	certs := r.c.ResolveInFolder(ctx, config.CodeSignOption.Path)
+	certs := r.c.ResolveInFolder(ctx, path)
 	var found bool
 
 	// The provisioning public key to match on
@@ -94,7 +82,7 @@ func (r signatureResolver) Resolve(ctx context.Context,
 
 // resolveProvisioningFileFor will try to resolve a provisioning for the provided configuration
 func (r signatureResolver) resolveProvisioningFileFor(ctx context.Context,
-	c config.Config,
+	path string,
 	bundleIdentifier string) (ProvisioningProfile, error) {
 
 	var res ProvisioningProfile
@@ -102,7 +90,7 @@ func (r signatureResolver) resolveProvisioningFileFor(ctx context.Context,
 	var found bool
 
 	// Resolving all provisining in the folder
-	pps := r.p.ResolveProvisioningFilesInFolder(ctx, c.CodeSignOption.Path)
+	pps := r.p.ResolveProvisioningFilesInFolder(ctx, path)
 
 	// We then iterate on the list to find a match against the project bundle identifier
 	for _, pp := range pps {
