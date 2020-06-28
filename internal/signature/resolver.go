@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"dothething/internal/config"
-	"dothething/internal/xcode/pbx"
 	"dothething/internal/xcode/project"
 	"errors"
 	"fmt"
@@ -49,7 +48,7 @@ func (r signatureResolver) Resolve(ctx context.Context,
 	var res SignatureConfiguration
 
 	// Resolving target
-	nativeTarget, err := pbx.FindTargetByName(p.Pbx.Targets, config.Target)
+	nativeTarget, err := p.Pbx.FindTargetByName(config.Target)
 	if err != nil {
 		return res, err
 	}
