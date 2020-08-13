@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"dothething/internal/util"
+	"dothething/internal/api"
 	"errors"
 	"io/ioutil"
 	"path/filepath"
@@ -30,26 +30,19 @@ const (
 	FlagNonExtractable     = "-x"
 )
 
-type KeyChain interface {
-	Create(ctx context.Context, password string) error
-	Delete(ctx context.Context) error
-	ImportCertificate(ctx context.Context, filePathh string, password string, identity string) error
-	GetPath() string
-}
-
 type keychain struct {
-	executor util.Executor
 	filePath string
+	api.API
 }
 
-func NewKeyChain(executor util.Executor) (KeyChain, error) {
+func NewKeyChain(api api.API) (api.KeyChain, error) {
 	tmpDir, err := ioutil.TempDir("", "do-the-thing-*")
 	if err != nil {
 		return nil, err
 	}
 
 	return keychain{
-		executor: executor,
+		API:      api,
 		filePath: filepath.Join(tmpDir, "do-the-thing.keychain"),
 	}, nil
 }
@@ -74,7 +67,7 @@ func (k keychain) Create(ctx context.Context, password string) error {
 
 // Delete will delete the keychain and remove them from the search list
 func (k keychain) Delete(ctx context.Context) error {
-	_, err := k.executor.CommandContext(ctx,
+	_, err := k.API.Exec().CommandContext(ctx,
 		SecurityUtil, ActionDeleteKeychain,
 		k.filePath).Output()
 
@@ -83,7 +76,7 @@ func (k keychain) Delete(ctx context.Context) error {
 
 // ImportCertificate Import one item into a keychain
 func (k keychain) ImportCertificate(ctx context.Context, filePath, password, identity string) error {
-	_, err := k.executor.CommandContext(ctx,
+	_, err := k.API.Exec().CommandContext(ctx,
 		SecurityUtil,
 		ActionImport,
 		filePath,
@@ -102,7 +95,7 @@ func (k keychain) createKeychain(ctx context.Context, password string) error {
 		return errors.New("Keychain password should not be empty")
 	}
 
-	_, err := k.executor.CommandContext(ctx,
+	_, err := k.API.Exec().CommandContext(ctx,
 		SecurityUtil,
 		ActionCreateKeychain,
 		FlagPassword, password, // Use password as the password for the keychains being created.
@@ -114,7 +107,7 @@ func (k keychain) createKeychain(ctx context.Context, password string) error {
 // configureKeychain : Set settings for keychain, or the default keychain if none is specified
 func (k keychain) configureKeychain(ctx context.Context) error {
 	// Omitting the timeout argument (-t) specified no-timeout
-	_, err := k.executor.CommandContext(ctx, SecurityUtil, ActionSettings, k.filePath).Output()
+	_, err := k.API.Exec().CommandContext(ctx, SecurityUtil, ActionSettings, k.filePath).Output()
 
 	return err
 }
@@ -122,7 +115,7 @@ func (k keychain) configureKeychain(ctx context.Context) error {
 // setPartitionList :  Sets the "partition list" for a key. The "partition list" is an extra
 // parameter in the ACL which limits access to the key based on an application's code signature.
 func (k keychain) setPartitionList(ctx context.Context, password string, description string) error {
-	b, err := k.executor.CommandContext(ctx,
+	b, err := k.API.Exec().CommandContext(ctx,
 		SecurityUtil,
 		ActionSetPartitionList,
 		FlagPartitionList, "apple:,apple-tool:,codesign:", // Partition ID
@@ -150,7 +143,7 @@ func (k keychain) addKeyChainToSearchList(ctx context.Context) error {
 func (k keychain) getSearchList(ctx context.Context) ([]string, error) {
 	// Display the the keychain search list without any specified domain
 	// TODO: Maybe necessary to define the domain later?
-	b, err := k.executor.
+	b, err := k.API.Exec().
 		CommandContext(ctx, SecurityUtil, ActionListKeyChains).
 		Output()
 	if err != nil {
@@ -179,7 +172,7 @@ func parseSearchList(data []byte) []string {
 
 func (k keychain) setSearchList(ctx context.Context, list []string) error {
 	args := append([]string{ActionListKeyChains, "-s"}, list...)
-	_, err := k.executor.
+	_, err := k.API.Exec().
 		CommandContext(ctx, SecurityUtil, args...).
 		Output()
 	return err

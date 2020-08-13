@@ -2,28 +2,24 @@ package action
 
 import (
 	"context"
-	"dothething/internal/config"
-	"dothething/internal/util"
+	"dothething/internal/api"
 	"dothething/internal/xcode"
 
 	"github.com/fatih/color"
 	"github.com/rs/zerolog/log"
 )
 
-type ActionBuild interface {
-	Run(ctx context.Context, config config.Config) error
-}
-
-func NewBuild(xcode xcode.BuildService, exec util.Executor) ActionBuild {
-	return actionBuild{exec, xcode}
+func NewBuild(api api.API) api.Action {
+	return actionBuild{api}
 }
 
 type actionBuild struct {
-	exec  util.Executor
-	xcode xcode.BuildService
+	api.API
+	//exec  util.Executor
+	//xcode xcode.BuildService
 }
 
-func (a actionBuild) Run(ctx context.Context, config config.Config) error {
+func (a actionBuild) Run(ctx context.Context, config api.Config) error {
 	xce := xcode.ParseXCodeBuildError(a.build(ctx, config))
 	if xce != nil {
 		color.New(color.FgHiRed, color.Bold).Println(xce.Error())
@@ -32,12 +28,12 @@ func (a actionBuild) Run(ctx context.Context, config config.Config) error {
 	return xce
 }
 
-func (a actionBuild) build(ctx context.Context, config config.Config) error {
+func (a actionBuild) build(ctx context.Context, config api.Config) error {
 	log.Info().Msg("Building")
-	return RunCmd(a.exec.CommandContext(ctx,
+	return RunCmd(a.API.Exec().CommandContext(ctx,
 		xcode.Cmd,
-		a.xcode.GetArg(),
-		a.xcode.GetProjectPath(),
+		a.API.XCodeBuildService().GetArg(),
+		a.API.XCodeBuildService().GetProjectPath(),
 		xcode.ActionBuild,
 		xcode.FlagScheme, config.Scheme,
 		"-showBuildTimingSummary",

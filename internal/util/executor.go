@@ -2,25 +2,20 @@ package util
 
 import (
 	"context"
+	"dothething/internal/api"
 	"fmt"
 	"os/exec"
 )
 
-// Executor command helper base interface
-type Executor interface {
-	// CommandContext allow to execute a command with Context
-	CommandContext(ctx context.Context, cmd string, args ...string) Cmd
-}
-
 type executor struct{}
 
 // NewExecutor create a new instance of the implemented Cmd interface
-func NewExecutor() Executor {
+func NewExecutor() api.Executor {
 	return &executor{}
 }
 
 // CommandContext run a command with context
-func (executor *executor) CommandContext(ctx context.Context, cmd string, args ...string) Cmd {
+func (executor *executor) CommandContext(ctx context.Context, cmd string, args ...string) api.Cmd {
 	fmt.Println(cmd, args)
 	return (*cmdWrapper)(exec.CommandContext(ctx, cmd, args...))
 }

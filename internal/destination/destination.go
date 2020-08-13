@@ -3,8 +3,7 @@ package destination
 import (
 	"bufio"
 	"context"
-	"dothething/internal/util"
-	"dothething/internal/xcode"
+	"dothething/internal/api"
 	"errors"
 	"reflect"
 	"regexp"
@@ -25,34 +24,18 @@ const (
 // ErrDestinationResolutionFailed Failed to resolve destinations for the project
 var ErrDestinationResolutionFailed = errors.New("Command execution failed")
 
-// Destination available destination for the scheme
-type Destination struct {
-	Name     string
-	Platform string
-	Id       string
-	OS       string
-}
-
-// DestinationService destination service definition
-type Service interface {
-	Boot(ctx context.Context, d Destination) error
-	List(ctx context.Context, scheme string) ([]Destination, error)
-	ShutDown(ctx context.Context, d Destination) error
-}
-
 type destinationService struct {
-	xcode xcode.BuildService
-	exec  util.Executor
+	api.API
 }
 
 // NewDestinationService Create a new instance of the project service
-func NewDestinationService(service xcode.BuildService, exec util.Executor) Service {
-	return destinationService{exec: exec, xcode: service}
+func NewDestinationService(a api.API) api.DestinationService {
+	return destinationService{a}
 }
 
 // Boot boot a destination
-func (s destinationService) Boot(ctx context.Context, d Destination) error {
-	cmd := s.exec.CommandContext(ctx, xcRun, simCtl, actionBootStatus, d.Id, flagBoot)
+func (s destinationService) Boot(ctx context.Context, d api.Destination) error {
+	cmd := s.API.Exec().CommandContext(ctx, xcRun, simCtl, actionBootStatus, d.Id, flagBoot)
 
 	b, err := cmd.Output()
 	if err != nil {
@@ -67,9 +50,9 @@ func (s destinationService) Boot(ctx context.Context, d Destination) error {
 }
 
 // ShutDown a device
-func (s destinationService) ShutDown(ctx context.Context, d Destination) error {
+func (s destinationService) ShutDown(ctx context.Context, d api.Destination) error {
 	log.Info().Str("Destination ID", d.Id).Msg("Shutdown destination")
-	cmd := s.exec.CommandContext(ctx, xcRun, simCtl, actionShutdown, d.Id)
+	cmd := s.API.Exec().CommandContext(ctx, xcRun, simCtl, actionShutdown, d.Id)
 
 	if _, err := cmd.Output(); err != nil {
 		return err
@@ -79,14 +62,14 @@ func (s destinationService) ShutDown(ctx context.Context, d Destination) error {
 }
 
 // ListDestinations Lists the valid destinations for a project or workspace and scheme
-func (s destinationService) List(ctx context.Context, scheme string) ([]Destination, error) {
-	res, err := s.xcode.ShowDestinations(ctx, scheme)
+func (s destinationService) List(ctx context.Context, scheme string) ([]api.Destination, error) {
+	res, err := s.API.XCodeBuildService().ShowDestinations(ctx, scheme)
 	return s.parseDestinations(res), err
 }
 
-func (s destinationService) parseDestinations(data string) []Destination {
+func (s destinationService) parseDestinations(data string) []api.Destination {
 	// Result
-	var res []Destination
+	var res []api.Destination
 
 	sc := bufio.NewScanner(strings.NewReader(data))
 	start := false
@@ -109,7 +92,7 @@ func (s destinationService) parseDestinations(data string) []Destination {
 			}
 
 			// Populate the destination
-			dest := Destination{}
+			dest := api.Destination{}
 			fillStruct(m, &dest)
 
 			// Append destination

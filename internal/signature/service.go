@@ -2,48 +2,32 @@ package signature
 
 import (
 	"context"
-	"dothething/internal/config"
+	"dothething/internal/api"
 	"dothething/internal/xcode/pbx"
-	"dothething/internal/xcode/project"
 	"fmt"
 )
 
-type Service interface {
-	Run(ctx context.Context, config config.Config) error
-}
-
 type service struct {
-	project.Project
-	project.ProjectService
-	Resolver
+	api.API
 }
 
-func New(ps project.ProjectService, sr Resolver) Service {
-	return service{ProjectService: ps, Resolver: sr}
+func New(api api.API) api.SignatureService {
+	return service{api}
 }
 
-func (s service) Run(ctx context.Context, config config.Config) error {
+func (s service) Run(ctx context.Context, target string, bcName string, path string, project api.Project) error {
 	var err error
 
-	// Parsing project first
-	s.Project, err = s.ProjectService.Parse(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Validate the configuration against the project
-	if err := s.Project.ValidateConfiguration(config); err != nil {
-		return err
-	}
-
 	// Resolve build configuration to target
-	bc, err := s.ResolveFor(config.Target, config.Configuration)
+	bc, err := s.ResolveFor(project, target, bcName)
 	if err != nil {
 		return err
 	}
 
 	// Resolve configuration for bundle identifier
-	sc, err := s.Resolver.Resolve(ctx, config.CodeSignOption.Path, bc.BuildSettings["PRODUCT_BUNDLE_IDENTIFIER"])
+	sc, err := s.API.
+		SignatureResolver().
+		Resolve(ctx, path, bc.BuildSettings["PRODUCT_BUNDLE_IDENTIFIER"])
 	if err != nil {
 		return err
 	}
@@ -52,10 +36,10 @@ func (s service) Run(ctx context.Context, config config.Config) error {
 	return nil
 }
 
-func (s service) ResolveFor(t string, config string) (pbx.XCBuildConfiguration, error) {
+func (s service) ResolveFor(pj api.Project, t string, config string) (pbx.XCBuildConfiguration, error) {
 	var res pbx.XCBuildConfiguration
-	// Resolving t
-	nativeTarget, err := s.Project.Pbx.FindTargetByName(t)
+	// Resolving target by name
+	nativeTarget, err := pj.Pbx.FindTargetByName(t)
 	if err != nil {
 		return res, err
 	}

@@ -2,11 +2,8 @@ package main
 
 import (
 	"context"
+	"dothething/internal/api"
 	"dothething/internal/client"
-	"dothething/internal/config"
-	"dothething/internal/signature"
-	"dothething/internal/util"
-	"dothething/internal/xcode"
 	"dothething/internal/xcode/project"
 	"fmt"
 	"os"
@@ -16,17 +13,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var cfg config.Config
-var xcb xcode.BuildService
-var fileUtil util.FileService
-var serviceList xcode.ListService
+var cfg api.Config
 
-//var serviceProject project.ProjectService
-var serviceProvisioning signature.ProvisioningService
-var executor util.Executor
+// var executor api.Executor
 var targetProject project.Project
 
-var api client.API
+var clientAPI api.API
 
 func main() {
 	// logger
@@ -37,34 +29,41 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	cfg = config.Config{
-		Path:          "/Users/johann.martinache/Desktop/tmp/BookStore-iOS/BookStore.xcodeproj",
-		Scheme:        "BookStore",
-		Configuration: "Release",
-		Target:        "BookStore",
-		CodeSignOption: config.SignConfig{
+	cfg = api.Config{
+		Path:          "/Users/johann.martinache/Desktop/massive/devops/axis-apple-cil/Axis.xcodeproj",
+		Scheme:        "Axis_iOS Demo",
+		Configuration: "Demo Debug",
+		Target:        "Axis_iOS",
+		CodeSignOption: api.SignConfig{
 			CertificatePassword: "abc12345",
 			Path:                "/users/johann.martinache/Desktop/dummy",
 		},
 	}
 
 	var err error
-	api, err = client.NewAPIClient(cfg)
+	clientAPI, err = client.NewAPIClient(cfg)
 	if err != nil {
 		panic(err)
 	}
 
-	err = resolveSignature(ctx)
-	fmt.Println("err", err)
+	pj, err := clientAPI.XCodeProjectService().Parse(ctx)
+	for _, tgt := range pj.Pbx.Targets {
+		fmt.Printf(">>>%#v\n", tgt.Dependencies)
+	}
+
+	// pj.ValidateConfiguration(cfg)
+
+	// err = resolveSignature(ctx, pj)
+	// fmt.Println("err", err)
 
 	// keychainTest()
 	// build()
 	// archive()
-	// unitTest()
+	unitTest()
 }
 
 func listXCodeInstance(ctx context.Context) error {
-	installs, err := api.XCodeListService().List(ctx)
+	installs, err := clientAPI.XCodeListService().List(ctx)
 	if err != nil {
 		return err
 	}
@@ -76,18 +75,17 @@ func listXCodeInstance(ctx context.Context) error {
 	return nil
 }
 
-func resolveSignature(ctx context.Context) error {
-	return api.
-		Signature().
-		Run(ctx, cfg)
+func resolveSignature(ctx context.Context, pj api.Project) error {
+	return clientAPI.
+		SignatureService().
+		Run(ctx, cfg.Target, cfg.Configuration, cfg.CodeSignOption.Path, pj)
 }
 
-func selectService(e util.Executor, l xcode.ListService) error {
+func selectService() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	selectService := xcode.NewSelectService(l, e)
-	res, err := selectService.Find(ctx, "11.3.1")
+	res, err := clientAPI.XCodeSelectService().Find(ctx, "11.3.1")
 	if err != nil {
 		return err
 	}
@@ -100,7 +98,7 @@ func build() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	return api.
+	return clientAPI.
 		ActionBuild().
 		Run(ctx, cfg)
 }
@@ -109,7 +107,7 @@ func archive() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	return api.
+	return clientAPI.
 		ActionArchive().
 		Run(ctx, cfg)
 }
@@ -119,7 +117,7 @@ func unitTest() error {
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	// Retrieving the destination for the scheme
-	dd, err := api.
+	dd, err := clientAPI.
 		DestinationService().
 		List(ctx, cfg.Scheme)
 
@@ -131,13 +129,14 @@ func unitTest() error {
 	d := dd[len(dd)-1]
 
 	// Shutting it down deferred
-	defer api.DestinationService().ShutDown(ctx, d)
+	defer clientAPI.DestinationService().ShutDown(ctx, d)
 
 	// Booting it now
-	api.DestinationService().Boot(ctx, d)
+	clientAPI.DestinationService().Boot(ctx, d)
 
 	// Running the test
-	return api.ActionRunTest().Run(ctx, d, cfg)
+	cfg.Destination = d
+	return clientAPI.ActionRunTest().Run(ctx, cfg)
 }
 
 func keychainTest() error {
@@ -148,13 +147,13 @@ func keychainTest() error {
 	// defer k.Delete(ctx)
 
 	// Create the new keychain
-	err := api.KeyChainService().Create(ctx, "password")
+	err := clientAPI.KeyChainService().Create(ctx, "password")
 	if err != nil {
 		return err
 	}
 
 	// Import the certificate
-	err = api.KeyChainService().ImportCertificate(ctx, "/Users/johann.martinache/Desktop/dummy/dummy.p12", "abc12345", "123")
+	err = clientAPI.KeyChainService().ImportCertificate(ctx, "/Users/johann.martinache/Desktop/dummy/dummy.p12", "abc12345", "123")
 	if err != nil {
 		return err
 	}

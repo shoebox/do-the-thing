@@ -20,5 +20,6 @@ require (
 	golang.org/x/tools/gopls v0.4.1 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v2 v2.2.8 // indirect
+	honnef.co/go/tools v0.0.1-2020.1.3
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb
 )

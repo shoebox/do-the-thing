@@ -1,6 +1,7 @@
 package util
 
 import (
+	"dothething/internal/api"
 	"io"
 	"os/exec"
 	"syscall"
@@ -12,7 +13,7 @@ import (
 // Wraps exec.Cmd so we can capture errors.
 type cmdWrapper exec.Cmd
 
-var _ Cmd = &cmdWrapper{}
+var _ api.Cmd = &cmdWrapper{}
 
 // SetDir is part of the Cmd interface
 func (cmd *cmdWrapper) SetDir(dir string) {

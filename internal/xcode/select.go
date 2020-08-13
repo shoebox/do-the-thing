@@ -2,7 +2,7 @@ package xcode
 
 import (
 	"context"
-	"dothething/internal/util"
+	"dothething/internal/api"
 	"errors"
 	"sort"
 
@@ -18,24 +18,16 @@ var (
 	ErrInvalidVersion = errors.New("Invalid version")
 )
 
-// SelectService The XCode version selection service interface
-type SelectService interface {
-	Find(ctx context.Context, version string) (*Install, error)
-}
-
 // selectService The XCode version selection service struct
-type selectService struct {
-	Executor util.Executor
-	list     ListService
-}
+type selectService struct{ api.API }
 
 // NewSelectService create a new instance of the xcode selector service
-func NewSelectService(list ListService, exec util.Executor) SelectService {
-	return selectService{Executor: exec, list: list}
+func NewSelectService(api api.API) api.SelectService {
+	return selectService{api}
 }
 
 // Find allow to resolve a XCode install by required vesion
-func (s selectService) Find(ctx context.Context, requirement string) (*Install, error) {
+func (s selectService) Find(ctx context.Context, requirement string) (*api.Install, error) {
 	// Should try to parse the required version
 	required, err := semver.Parse(requirement)
 	if err != nil {
@@ -53,7 +45,7 @@ func (s selectService) Find(ctx context.Context, requirement string) (*Install, 
 	return target, nil
 }
 
-func (s *selectService) isEqualMatch(install *Install, requirement semver.Version) (bool, error) {
+func (s *selectService) isEqualMatch(install *api.Install, requirement semver.Version) (bool, error) {
 	if v, err := semver.Parse(install.Version); err == nil {
 		if v.Equals(requirement) {
 			return true, nil
@@ -65,16 +57,16 @@ func (s *selectService) isEqualMatch(install *Install, requirement semver.Versio
 func (s *selectService) findMatch(
 	ctx context.Context,
 	requirement semver.Version,
-	valid func(install *Install, version semver.Version) (bool, error)) (*Install, error) {
+	valid func(install *api.Install, version semver.Version) (bool, error)) (*api.Install, error) {
 
 	// Resolve the list of candidates
-	list, err := s.list.List(ctx)
+	list, err := s.API.XCodeListService().List(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Iterate on installs
-	var installs []*Install
+	var installs []*api.Install
 	for _, install := range list {
 		res, err := valid(install, requirement)
 		if err != nil {
@@ -98,13 +90,13 @@ func (s *selectService) findMatch(
 	return installs[0], nil
 }
 
-func sortInstalls(installs []*Install) {
+func sortInstalls(installs []*api.Install) {
 	sort.Slice(installs, func(i, j int) bool {
 		return compareInstall(installs[i], installs[j])
 	})
 }
 
-func compareInstall(i1 *Install, i2 *Install) bool {
+func compareInstall(i1 *api.Install, i2 *api.Install) bool {
 	v1, err := semver.Parse(i1.Version)
 	if err != nil {
 		return false

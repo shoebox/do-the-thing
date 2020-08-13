@@ -22,11 +22,20 @@ func (c pbxConvertor) ToNativeTarget(e Entry) NativeTarget {
 	return NativeTarget{
 		BuildConfigurationList: c.ToXCConfigurationList(e.BuildConfigurationList.Get(c.p)),
 		BuildPhases:            c.ToBuildPhases(e.BuildPhases),
+		Dependencies:           c.ToDependencies(e.Dependencies),
 		Name:                   e.Name,
 		ProductName:            e.ProductName,
 		ProductInstallPath:     e.ProductInstallPath,
 		ProductType:            PBXProductType(e.ProductType),
 	}
+}
+
+func (c pbxConvertor) ToDependencies(a ArrayRef) []NativeTarget {
+	var res []NativeTarget
+	for _, e := range a.GetList(c.p) {
+		res = append(res, c.ToNativeTarget(e.Target.Get(c.p)))
+	}
+	return res
 }
 
 func (c pbxConvertor) ToBuildPhases(a ArrayRef) []PBXBuildPhase {

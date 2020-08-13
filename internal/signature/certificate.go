@@ -3,8 +3,7 @@ package signature
 import (
 	"context"
 	"crypto/x509"
-	"dothething/internal/config"
-	"dothething/internal/util"
+	"dothething/internal/api"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -14,36 +13,26 @@ import (
 	"golang.org/x/crypto/pkcs12"
 )
 
-// P12Certificate is a more convenient alias
-type P12Certificate struct {
-	*x509.Certificate
-	FilePath string
-}
-
 var (
 	ErrorFailedToReadFile   = errors.New("Failed to read file")
 	ErrorFailedToDecryptPEM = errors.New("Failed to decrypt PEM")
 )
 
 // CertificateService service interface definition
-type CertificateService interface {
-	DecodeCertificate(r io.Reader, password string) (P12Certificate, error)
-	ResolveInFolder(ctx context.Context, root string) []P12Certificate
-}
-
 type certService struct {
-	config config.Config
-	fs     util.FileService
+	api.API
+	// config config.Config
+	// fs     util.FileService
 }
 
 // NewCertificateService create a new instance of the certificate service
-func NewCertificateService(cfg config.Config, fs util.FileService) CertificateService {
-	return certService{config: cfg, fs: fs}
+func NewCertificateService(api api.API) api.CertificateService {
+	return certService{api}
 }
 
 // DecDecodeCertificate allow to validate/decode the content of the io.Reader into a P12Certificate
-func (xs certService) DecodeCertificate(r io.Reader, password string) (P12Certificate, error) {
-	var result P12Certificate
+func (xs certService) DecodeCertificate(r io.Reader, password string) (api.P12Certificate, error) {
+	var result api.P12Certificate
 
 	// We read the content of the file
 	data, err := readFile(r)
@@ -63,7 +52,7 @@ func (xs certService) DecodeCertificate(r io.Reader, password string) (P12Certif
 		if key.Type == "CERTIFICATE" {
 			// And we parse the single certificate
 			if cert, err := x509.ParseCertificate(key.Bytes); err == nil {
-				result = P12Certificate{Certificate: cert}
+				result = api.P12Certificate{Certificate: cert}
 				break
 			}
 		}
@@ -92,10 +81,10 @@ func isCertificateFile(info os.FileInfo) bool {
 func (xs certService) readCertificateFile(
 	ctx context.Context,
 	path string,
-	res chan P12Certificate,
+	res chan api.P12Certificate,
 ) error {
 	// Open the file content to a reader
-	f, err := xs.fs.Open(path)
+	f, err := xs.API.FileService().Open(path)
 	if err != nil {
 		return err
 	}
@@ -109,11 +98,11 @@ func (xs certService) readCertificateFile(
 func (xs certService) decodeRawCertificate(
 	ctx context.Context,
 	reader io.Reader,
-	cres chan P12Certificate,
+	cres chan api.P12Certificate,
 	filepath string,
 ) error {
 	// Decodes it (temp test password)
-	cert, err := xs.DecodeCertificate(reader, xs.config.CodeSignOption.CertificatePassword)
+	cert, err := xs.DecodeCertificate(reader, "123") // xs.config.CodeSignOption.CertificatePassword)
 	if err != nil {
 		return err
 	}
@@ -131,11 +120,11 @@ func (xs certService) decodeRawCertificate(
 }
 
 // ResolveInFolder is used to resolve all certificate files into the provided path
-func (xs certService) ResolveInFolder(ctx context.Context, root string) []P12Certificate {
-	certs := make(chan P12Certificate)
+func (xs certService) ResolveInFolder(ctx context.Context, root string) []api.P12Certificate {
+	certs := make(chan api.P12Certificate)
 
 	// Use the file service walk helper to find candidates certificate file
-	errgroup := xs.fs.Walk(ctx, root, isCertificateFile,
+	errgroup := xs.API.FileService().Walk(ctx, root, isCertificateFile,
 		// And for each candidate
 		func(ctx context.Context, path string) error {
 			// We try to read a certificate file
@@ -152,7 +141,7 @@ func (xs certService) ResolveInFolder(ctx context.Context, root string) []P12Cer
 	}()
 
 	// Finally we convert the channel items to an array
-	var res []P12Certificate
+	var res []api.P12Certificate
 	for c := range certs {
 		res = append(res, c)
 	}

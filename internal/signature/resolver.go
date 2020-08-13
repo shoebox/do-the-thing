@@ -3,38 +3,23 @@ package signature
 import (
 	"bytes"
 	"context"
+	"dothething/internal/api"
 	"errors"
 	"fmt"
 )
 
 var ErrNoMatchFound = errors.New("No match found")
 
-// Resolver is the base interface for the signature result
-type Resolver interface {
-	// Resolve will to try to resolve and match of provisioning profile and certficiate aginst the
-	// provided project configuration
-	Resolve(ctx context.Context,
-		path string,
-		bundleIdentifier string) (SignatureConfiguration, error)
-}
-
-type SignatureConfiguration struct {
-	ProvisioningProfile ProvisioningProfile
-	Cert                P12Certificate
-	path                string
-}
-
 // NewResolver creates a new instance of the signature resolver to be use to find the
 // right signature configuration for the provided configuration (aka pair of certificate and
 // provisioning)
-func NewResolver(c CertificateService, p ProvisioningService) Resolver {
-	return signatureResolver{p: p, c: c}
+func NewResolver(api api.API) api.SignatureResolver {
+	return signatureResolver{api}
 }
 
 // signatureResolver is the implementation of the SignatureResolver interface
 type signatureResolver struct {
-	c CertificateService
-	p ProvisioningService
+	api.API
 }
 
 // Resolve will to try to resolve and match of provisioning profile and certficiate aginst the
@@ -42,10 +27,10 @@ type signatureResolver struct {
 func (r signatureResolver) Resolve(ctx context.Context,
 	// config config.Config,
 	path string,
-	bundleIdentifier string) (SignatureConfiguration, error) {
+	bundleIdentifier string) (api.SignatureConfiguration, error) {
 
 	var err error
-	var res SignatureConfiguration
+	var res api.SignatureConfiguration
 
 	// Matching the right provisioning file for the project bundle identifier configuration
 	res.ProvisioningProfile, err = r.resolveProvisioningFileFor(ctx,
@@ -56,7 +41,7 @@ func (r signatureResolver) Resolve(ctx context.Context,
 	}
 
 	// And trying find a matching certificate to pair with the bundle identifier
-	certs := r.c.ResolveInFolder(ctx, path)
+	certs := r.API.CertificateService().ResolveInFolder(ctx, path)
 	var found bool
 
 	// The provisioning public key to match on
@@ -83,14 +68,14 @@ func (r signatureResolver) Resolve(ctx context.Context,
 // resolveProvisioningFileFor will try to resolve a provisioning for the provided configuration
 func (r signatureResolver) resolveProvisioningFileFor(ctx context.Context,
 	path string,
-	bundleIdentifier string) (ProvisioningProfile, error) {
+	bundleIdentifier string) (api.ProvisioningProfile, error) {
 
-	var res ProvisioningProfile
+	var res api.ProvisioningProfile
 	var err error
 	var found bool
 
 	// Resolving all provisining in the folder
-	pps := r.p.ResolveProvisioningFilesInFolder(ctx, path)
+	pps := r.API.ProvisioningService().ResolveProvisioningFilesInFolder(ctx, path)
 
 	// We then iterate on the list to find a match against the project bundle identifier
 	for _, pp := range pps {

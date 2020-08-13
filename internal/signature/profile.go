@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/x509"
+	"dothething/internal/api"
 	"dothething/internal/util"
 	"errors"
 	"fmt"
@@ -12,32 +13,9 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	"go.mozilla.org/pkcs7"
 )
-
-// ProvisioningProfile type definition
-type ProvisioningProfile struct {
-	BundleIdentifier string
-	Certificates     []*x509.Certificate
-	Entitlements     Entitlements `plist:"Entitlements"`
-	ExpirationDate   time.Time    `plist:"ExpirationDate"`
-	Name             string       `plist:"Name"`
-	FilePath         string
-	Platform         []string `plist:"Platform"`
-	RawCertificates  [][]byte `plist:"DeveloperCertificates"`
-	TeamName         string   `plist:"TeamName"`
-	UUID             string   `plist:"UUID"`
-}
-
-// Entitlements provisioning entitlements definition
-type Entitlements struct {
-	AccessGroup string `json:"keychain-access-groups"`
-	Aps         string `json:"aps-environment"`
-	AppID       string `plist:"application-identifier"`
-	TeamID      string `plist:"com.apple.developer.team-identifier"`
-}
 
 var (
 	// ErrorFailedToDecode the decode of the provisioning profile failed
@@ -47,26 +25,19 @@ var (
 	ErrorParsingPublicKey = errors.New("Failed to parse the provisioning file certificate")
 )
 
-// ProvisioningService interface to describe the provisioning service method
-type ProvisioningService interface {
-	Decode(ctx context.Context, r io.Reader) (ProvisioningProfile, error)
-	ResolveProvisioningFilesInFolder(ctx context.Context, root string) []ProvisioningProfile
-}
-
 // provisioningService implement the ProvisioningService interface
 type provisioningService struct {
-	util.FileService
-	util.Executor
+	api.API
 }
 
 // NewProvisioningService create a new instance of the provisioning service
-func NewProvisioningService(e util.Executor, f util.FileService) ProvisioningService {
-	return provisioningService{Executor: e, FileService: f}
+func NewProvisioningService(api api.API) api.ProvisioningService {
+	return provisioningService{api}
 }
 
 // Decode will decode the provisioning at the designated filepath
-func (p provisioningService) Decode(ctx context.Context, r io.Reader) (ProvisioningProfile, error) {
-	var pp ProvisioningProfile
+func (p provisioningService) Decode(ctx context.Context, r io.Reader) (api.ProvisioningProfile, error) {
+	var pp api.ProvisioningProfile
 
 	// First we decode the provisioning at path
 	data, err := p.decodeProvisioning(ctx, r)
@@ -127,7 +98,7 @@ func (p provisioningService) decodeRawProvisioning(
 	ctx context.Context,
 	filepath string,
 	reader io.ReadCloser,
-	cprovisioning chan ProvisioningProfile,
+	cprovisioning chan api.ProvisioningProfile,
 ) error {
 	defer reader.Close()
 
@@ -153,10 +124,10 @@ func (p provisioningService) decodeRawProvisioning(
 func (p provisioningService) readProvisioningFile(
 	ctx context.Context,
 	path string,
-	cprovisioning chan ProvisioningProfile,
+	cprovisioning chan api.ProvisioningProfile,
 ) error {
 	// Open the file to a reader
-	f, err := p.FileService.Open(path)
+	f, err := p.API.FileService().Open(path)
 	if err != nil {
 		return nil
 	}
@@ -176,14 +147,14 @@ func (p provisioningService) readProvisioningFile(
 func (p provisioningService) ResolveProvisioningFilesInFolder(
 	ctx context.Context,
 	root string,
-) []ProvisioningProfile {
-	res := []ProvisioningProfile{}
+) []api.ProvisioningProfile {
+	res := []api.ProvisioningProfile{}
 
 	// Channel of provisionings
-	provisionings := make(chan ProvisioningProfile)
+	provisionings := make(chan api.ProvisioningProfile)
 
 	// Use the file service walk helper to find candidates provisioning file
-	errgroup := p.FileService.Walk(ctx, root, isProvisioningFile,
+	errgroup := p.API.FileService().Walk(ctx, root, isProvisioningFile,
 		// And for each candidate
 		func(ctx context.Context, path string) error {
 			// We try to read a valid provisioning file

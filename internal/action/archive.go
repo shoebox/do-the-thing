@@ -2,28 +2,22 @@ package action
 
 import (
 	"context"
-	"dothething/internal/config"
-	"dothething/internal/util"
+	"dothething/internal/api"
 	"dothething/internal/xcode"
 
 	"github.com/fatih/color"
 	"github.com/rs/zerolog/log"
 )
 
-type ActionArchive interface {
-	Run(ctx context.Context, config config.Config) error
-}
-
-func NewArchive(xcode xcode.BuildService, exec util.Executor) ActionArchive {
-	return actionArchive{exec, xcode}
+func NewArchive(api api.API) api.Action {
+	return actionArchive{api}
 }
 
 type actionArchive struct {
-	exec  util.Executor
-	xcode xcode.BuildService
+	api.API
 }
 
-func (a actionArchive) Run(ctx context.Context, config config.Config) error {
+func (a actionArchive) Run(ctx context.Context, config api.Config) error {
 	xce := xcode.ParseXCodeBuildError(a.build(ctx, config))
 	if xce != nil {
 		color.New(color.FgHiRed, color.Bold).Println(xce.Error())
@@ -32,12 +26,12 @@ func (a actionArchive) Run(ctx context.Context, config config.Config) error {
 	return xce
 }
 
-func (a actionArchive) build(ctx context.Context, config config.Config) error {
+func (a actionArchive) build(ctx context.Context, config api.Config) error {
 	log.Info().Msg("Archiving")
-	return RunCmd(a.exec.CommandContext(ctx,
+	return RunCmd(a.API.Exec().CommandContext(ctx,
 		xcode.Cmd,
-		a.xcode.GetArg(),
-		a.xcode.GetProjectPath(),
+		a.API.XCodeBuildService().GetArg(),
+		a.API.XCodeBuildService().GetProjectPath(),
 		xcode.ActionArchive,
 		xcode.FlagScheme, config.Scheme,
 		"CODE_SIGN_IDENTITY=iPhone developer: Self signer",
