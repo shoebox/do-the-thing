@@ -5,6 +5,6 @@ import "context"
 type KeyChain interface {
 	Create(ctx context.Context, password string) error
 	Delete(ctx context.Context) error
-	ImportCertificate(ctx context.Context, filePathh string, password string, identity string) error
+	ImportCertificate(ctx context.Context, filePath string, password string) error
 	GetPath() string
 }

@@ -1,6 +1,8 @@
 package pbx
 
-import "errors"
+import (
+	"errors"
+)
 
 type PBXProject struct {
 	Targets []NativeTarget
@@ -10,7 +12,7 @@ func (p PBXProject) FindTargetByName(name string) (NativeTarget, error) {
 	var err error
 	var res NativeTarget
 	var found bool
-	for _, tgt := range p.Targets{
+	for _, tgt := range p.Targets {
 		if tgt.Name == name {
 			found = true
 			res = tgt

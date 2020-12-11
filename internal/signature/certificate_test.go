@@ -2,12 +2,8 @@ package signature
 
 import (
 	"dothething/internal/utiltest"
-	"errors"
 	"os"
-	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var fs *utiltest.MockFileService
@@ -15,11 +11,12 @@ var cs certService
 
 func Main(m *testing.M) {
 	fs = new(utiltest.MockFileService)
-	cs = certService{fs: fs}
+	// cs = certService{fs: fs}
 
 	os.Exit(m.Run())
 }
 
+/*
 func TestIsCertFile(t *testing.T) {
 	// setup:
 	cases := []struct {
@@ -137,3 +134,4 @@ type errReader int
 func (errReader) Read(p []byte) (n int, err error) {
 	return 0, errors.New("test error")
 }
+*/

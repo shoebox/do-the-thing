@@ -46,19 +46,3 @@ func TestGetRef(t *testing.T) {
 	// then:
 	assert.ObjectsAreEqual(entry, e)
 }
-
-func TestGetArrayRef(t *testing.T) {
-	// setup:
-	ar := ArrayRef([]Ref{
-		Ref("ref1"),
-		Ref("ref2"),
-	})
-
-	// when:
-	l := ar.GetList(raw)
-
-	// then:
-	assert.EqualValues(t, 2, len(l))
-	assert.EqualValues(t, ref1, l[0])
-	assert.EqualValues(t, ref2, l[1])
-}

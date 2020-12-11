@@ -11,6 +11,7 @@ type XCConfigurationList struct {
 
 type XCBuildConfiguration struct {
 	Name                       string
+	Reference                  string
 	BuildSettings              map[string]string
 	BaseConfigurationReference string
 }

@@ -75,7 +75,7 @@ func (k keychain) Delete(ctx context.Context) error {
 }
 
 // ImportCertificate Import one item into a keychain
-func (k keychain) ImportCertificate(ctx context.Context, filePath, password, identity string) error {
+func (k keychain) ImportCertificate(ctx context.Context, filePath, password string) error {
 	_, err := k.API.Exec().CommandContext(ctx,
 		SecurityUtil,
 		ActionImport,

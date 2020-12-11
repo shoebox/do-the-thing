@@ -41,8 +41,6 @@ func (p Project) ValidateConfiguration(c api.Config) error {
 	return nil
 }
 
-// ProjectService interface
-
 // projectService struct definition
 type projectService struct {
 	api.API

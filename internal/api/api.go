@@ -8,7 +8,7 @@ import (
 
 type CertificateService interface {
 	DecodeCertificate(r io.Reader, password string) (P12Certificate, error)
-	ResolveInFolder(ctx context.Context, root string) []P12Certificate
+	ResolveInFolder(ctx context.Context, root string) []*P12Certificate
 }
 
 // API definition interface. This is the central point to retrieve the instance of the diferent
@@ -22,6 +22,7 @@ type API interface {
 	Exec() Executor
 	FileService() FileService
 	KeyChainService() KeyChain
+	PListBuddyService() PListBuddyService
 	ProvisioningService() ProvisioningService
 	SignatureResolver() SignatureResolver
 	SignatureService() SignatureService
@@ -32,7 +33,7 @@ type API interface {
 }
 
 type Action interface {
-	Run(ctx context.Context, config Config) error
+	Run(ctx context.Context) error
 }
 
 // P12Certificate is a more convenient alias

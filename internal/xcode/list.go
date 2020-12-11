@@ -42,7 +42,10 @@ func (s listService) List(ctx context.Context) ([]*api.Install, error) {
 }
 
 func (s listService) spotlightSearch(ctx context.Context) ([]byte, error) {
-	return s.API.Exec().CommandContext(ctx, MdFind, BundleIdentifier).Output()
+	return s.API.
+		Exec().
+		CommandContext(ctx, MdFind, BundleIdentifier).
+		Output()
 }
 
 func (s listService) parseSpotlightSearchResult(reader io.Reader) ([]*api.Install, error) {
@@ -72,10 +75,13 @@ func (s listService) parseSpotlightEntry(path string) (*api.Install, error) {
 }
 
 func (s listService) validate(path string) (bool, error) {
-	return s.API.FileService().IsDir(path)
+	return s.API.
+		FileService().
+		IsDir(path)
 }
 
 func (s listService) resolveXcode(path string) (*api.Install, error) {
+	// If not absolute, convert to relative path
 	abs, err := filepath.Abs(path + ContentPListFile)
 	if err != nil {
 		return nil, err
@@ -83,13 +89,13 @@ func (s listService) resolveXcode(path string) (*api.Install, error) {
 
 	info := infoPlist{}
 
-	file, err := s.API.FileService().OpenAndReadFileContent(abs)
+	// Read the file content
+	fb, err := s.API.FileService().OpenAndReadFileContent(abs)
 	if err != nil {
 		return nil, err
 	}
 
-	err = util.DecodeFile(bytes.NewReader(file), &info)
-	if err != nil {
+	if err = util.DecodeFile(bytes.NewReader(fb), &info); err != nil {
 		return nil, err
 	}
 

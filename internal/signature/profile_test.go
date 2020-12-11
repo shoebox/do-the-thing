@@ -1,18 +1,8 @@
 package signature
 
 import (
-	"bytes"
-	"context"
 	"dothething/internal/utiltest"
-	"errors"
 	"io"
-	"io/ioutil"
-	"os"
-	"strings"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"go.mozilla.org/pkcs7"
 )
 
 const validProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
@@ -142,6 +132,7 @@ var subject provisioningService
 
 var readerValid io.Reader
 
+/*
 func TestMain(m *testing.M) {
 	mockExec = new(utiltest.MockExecutor)
 	mockFs = new(utiltest.MockFileService)
@@ -390,3 +381,4 @@ func (m mockedFileInfo) Mode() os.FileMode { return m.fileMode }
 
 // IsDir will return the configure value for the mock of the isDir field
 func (m mockedFileInfo) IsDir() bool { return m.isDir }
+*/

@@ -3,8 +3,9 @@ package util
 import (
 	"context"
 	"dothething/internal/api"
-	"fmt"
 	"os/exec"
+
+	"github.com/rs/zerolog/log"
 )
 
 type executor struct{}
@@ -16,6 +17,9 @@ func NewExecutor() api.Executor {
 
 // CommandContext run a command with context
 func (executor *executor) CommandContext(ctx context.Context, cmd string, args ...string) api.Cmd {
-	fmt.Println(cmd, args)
+	log.Debug().
+		Str("Cmd", cmd).
+		Strs("Args", args).
+		Msg("Running command with context")
 	return (*cmdWrapper)(exec.CommandContext(ctx, cmd, args...))
 }

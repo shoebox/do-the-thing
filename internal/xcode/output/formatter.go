@@ -2,7 +2,6 @@ package output
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"strings"
 
@@ -22,7 +21,7 @@ func (f formatter) Parse(r io.Reader) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		txt := scanner.Text()
-		fmt.Println(txt)
+		// fmt.Println(txt)
 		for _, matcher := range f.m {
 			b, m := matcher.Match(strings.ReplaceAll(txt, `\ `, ""))
 			if b {

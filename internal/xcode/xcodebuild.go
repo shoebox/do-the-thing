@@ -21,36 +21,38 @@ const (
 	FlagResultBundlePath    = "-resultBundlePath"                 // FlagResultBundlePath Writes a bundle to the specified path with results from performing an action on a scheme in a workspace
 	FlagScheme              = "-scheme"                           // FlagScheme Build the scheme specified by scheme name
 	FlagShowDestinations    = "-showdestinations"                 // FlagShowDestinations Lists the valid destinations for a project or workspace and scheme.
-	FlagWorkspace           = "-workspace"                        // FlagWorkspace Build the designated workspace
+	FlagConfiguration       = "-configuration"
+	FlagWorkspace           = "-workspace" // FlagWorkspace Build the designated workspace
+	FlagArchivePath         = "-archivePath"
+	FlagExportPath          = "-exportPath"
 )
 
 type xcodeBuildService struct {
 	api.API
-	arg         string
-	projectPath string
+	cfg *api.Config
 }
 
 // NewService creates a new instance of the xcodebuild service
-func NewService(api api.API, projectPath string) api.BuildService {
-	arg := FlagProject
-	if filepath.Ext(projectPath) == ".xcworkspace" {
-		arg = FlagWorkspace
-	}
-	return xcodeBuildService{API: api, arg: arg, projectPath: projectPath}
+func NewService(api api.API, cfg *api.Config) api.BuildService {
+	return xcodeBuildService{API: api, cfg: cfg} //, arg: arg, projectPath: projectPath}
 }
 
 func (s xcodeBuildService) GetArg() string {
-	return s.arg
+	arg := FlagProject
+	if filepath.Ext(s.cfg.Path) == ".xcworkspace" {
+		arg = FlagWorkspace
+	}
+	return arg
 }
 
 func (s xcodeBuildService) GetProjectPath() string {
-	return s.projectPath
+	return s.cfg.Path
 }
 
 // List Lists the targets and configurations in a project, or the schemes in a workspace
 func (s xcodeBuildService) List(ctx context.Context) (string, error) {
-	cmd := s.API.Exec().CommandContext(ctx, Cmd, FlagList, FlagJSON, s.arg, s.projectPath)
-	b, err := cmd.Output()
+	cmd := s.API.Exec().CommandContext(ctx, Cmd, FlagList, FlagJSON, s.GetArg(), s.cfg.Path)
+	b, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", ParseXCodeBuildError(err)
 	}
@@ -62,8 +64,8 @@ func (s xcodeBuildService) ShowDestinations(ctx context.Context, scheme string) 
 	cmd := s.API.Exec().CommandContext(ctx,
 		Cmd,
 		FlagShowDestinations,
-		s.arg,
-		s.projectPath,
+		s.GetArg(),
+		s.cfg.Path,
 		FlagScheme,
 		scheme)
 

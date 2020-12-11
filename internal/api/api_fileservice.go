@@ -4,8 +4,7 @@ import (
 	"context"
 	"io"
 	"os"
-
-	"golang.org/x/sync/errgroup"
+	"sync"
 )
 
 type FileService interface {
@@ -15,5 +14,8 @@ type FileService interface {
 	Walk(ctx context.Context,
 		root string,
 		isValid func(info os.FileInfo) bool,
-		handlePath func(ctx context.Context, path string) error) *errgroup.Group
+		file chan string,
+		wg *sync.WaitGroup,
+	) error
+	// handlePath func(ctx context.Context, path string) error) *errgroup.Group
 }

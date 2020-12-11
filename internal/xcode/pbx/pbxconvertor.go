@@ -23,6 +23,7 @@ func (c pbxConvertor) ToNativeTarget(e Entry) NativeTarget {
 		BuildConfigurationList: c.ToXCConfigurationList(e.BuildConfigurationList.Get(c.p)),
 		BuildPhases:            c.ToBuildPhases(e.BuildPhases),
 		Dependencies:           c.ToDependencies(e.Dependencies),
+		Ref:                    e.Ref,
 		Name:                   e.Name,
 		ProductName:            e.ProductName,
 		ProductInstallPath:     e.ProductInstallPath,
@@ -65,6 +66,7 @@ func (c pbxConvertor) ToXCConfigurationArray(e ArrayRef) []XCBuildConfiguration 
 
 func (c pbxConvertor) ToXCBuildConfiguration(e Entry) XCBuildConfiguration {
 	return XCBuildConfiguration{
+		Reference:                  e.Ref,
 		BuildSettings:              c.ToStringMap(e.BuildSettings),
 		BaseConfigurationReference: e.BaseConfigurationReference,
 		Name:                       e.Name,

@@ -8,13 +8,19 @@ import (
 )
 
 type SignatureService interface {
-	Run(ctx context.Context, target string, bc string, path string, pj Project) error
+	Run(ctx context.Context, pj Project) ([]TargetSignatureConfig, error)
+}
+
+type TargetSignatureConfig struct {
+	TargetName string
+	Config     *SignatureConfiguration
 }
 
 // ProvisioningService interface to describe the provisioning service method
 type ProvisioningService interface {
 	Decode(ctx context.Context, r io.Reader) (ProvisioningProfile, error)
-	ResolveProvisioningFilesInFolder(ctx context.Context, root string) []ProvisioningProfile
+	ResolveProvisioningFilesInFolder(ctx context.Context, root string) []*ProvisioningProfile
+	Install(p *ProvisioningProfile) error
 }
 
 // ProvisioningProfile type definition
@@ -41,11 +47,11 @@ type Entitlements struct {
 
 // Resolver is the base interface for the signature result
 type SignatureResolver interface {
-	Resolve(ctx context.Context, path string, bundleIdentifier string) (SignatureConfiguration, error)
+	Resolve(ctx context.Context, bundleIdentifier string, platform string) (*SignatureConfiguration, error)
 }
 
 type SignatureConfiguration struct {
-	ProvisioningProfile ProvisioningProfile
-	Cert                P12Certificate
+	ProvisioningProfile *ProvisioningProfile
+	Cert                *P12Certificate
 	path                string
 }

@@ -1,16 +1,6 @@
 package xcode
 
-import (
-	"context"
-	"dothething/internal/utiltest"
-	"errors"
-	"testing"
-	"time"
-
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
-)
-
+/*
 type XCodebuildSuite struct {
 	suite.Suite
 	cmd      *utiltest.MockExecutorCmd
@@ -120,3 +110,4 @@ func (s *XCodebuildSuite) TestShowDestinations() {
 	s.Assert().EqualValues(res, txt)
 	s.Assert().NoError(err)
 }
+*/

@@ -33,16 +33,16 @@ func TestAdd(t *testing.T) {
 }
 
 func TestAddAndGenerate(t *testing.T) {
-
-	//
+	// setup:
+	subject = helper{entries: map[string]entry{}}
 	b, err := subject.Add("CODE_SIGN_STYLE", "Manual", EntryConfig{Config: "BookStore"})
 	assert.True(t, b)
 	assert.NoError(t, err)
 
-	//
+	// when:
 	res := subject.Generate()
 
-	//
+	// then:
 	assert.EqualValues(t, "CODE_SIGN_STYLE[config=BookStore]=Manual", res)
 }
 

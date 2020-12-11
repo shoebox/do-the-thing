@@ -4,21 +4,25 @@ import (
 	"context"
 	"dothething/internal/api"
 	"dothething/internal/xcode"
+	"dothething/internal/xcode/pbx"
+	"fmt"
 
 	"github.com/fatih/color"
 	"github.com/rs/zerolog/log"
 )
 
-func NewArchive(api api.API) api.Action {
-	return actionArchive{api}
+func NewArchive(api api.API, cfg *api.Config) api.Action {
+	return actionArchive{api, cfg}
 }
 
 type actionArchive struct {
 	api.API
+	*api.Config
 }
 
-func (a actionArchive) Run(ctx context.Context, config api.Config) error {
-	xce := xcode.ParseXCodeBuildError(a.build(ctx, config))
+func (a actionArchive) Run(ctx context.Context) error {
+	xce := xcode.ParseXCodeBuildError(a.build(ctx))
+	fmt.Println("run", xce)
 	if xce != nil {
 		color.New(color.FgHiRed, color.Bold).Println(xce.Error())
 	}
@@ -26,21 +30,80 @@ func (a actionArchive) Run(ctx context.Context, config api.Config) error {
 	return xce
 }
 
-func (a actionArchive) build(ctx context.Context, config api.Config) error {
+func (a actionArchive) configureBuildSetting(
+	ctx context.Context,
+	cc pbx.XCBuildConfiguration,
+	key string,
+	value string,
+) error {
+	var err error
+	bs := fmt.Sprintf("buildSettings:%v", key)
+
+	_, ok := cc.BuildSettings[key]
+	if ok {
+		err = a.API.PListBuddyService().SetStringValue(ctx, cc.Reference, bs, value)
+	} else {
+		err = a.API.PListBuddyService().AddStringValue(ctx, cc.Reference, bs, value)
+	}
+
+	return err
+}
+
+func (a actionArchive) build(ctx context.Context) error {
 	log.Info().Msg("Archiving")
-	return RunCmd(a.API.Exec().CommandContext(ctx,
-		xcode.Cmd,
+
+	// Parsing project
+	pj, err := a.API.XCodeProjectService().Parse(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Resolving signature
+	cfg, err := a.API.SignatureService().Run(ctx, pj)
+	if err != nil {
+		return err
+	}
+
+	for _, e := range cfg {
+		tgt, err := pj.Pbx.FindTargetByName(e.TargetName)
+		if err != nil {
+			log.Error().Err(err).Msg("Error while resolving target")
+			continue
+		}
+
+		cc, err := tgt.BuildConfigurationList.FindConfiguration(a.Configuration)
+		if err != nil {
+			log.Error().Err(err).Str("Build configuration", a.Configuration).Msg("Failed to resolve build configuration")
+		}
+
+		// Instal
+		err = a.API.ProvisioningService().Install(e.Config.ProvisioningProfile)
+		if err != nil {
+			log.Error().Err(err).Msg("Error while installing certificate")
+		}
+
+		a.configureBuildSetting(ctx, cc, "DEVELOPMENT_TEAM", e.Config.ProvisioningProfile.Entitlements.TeamID)
+		a.configureBuildSetting(ctx, cc, "PROVISIONING_PROFILE_SPECIFIER", e.Config.ProvisioningProfile.UUID)
+		a.configureBuildSetting(ctx, cc, "CODE_SIGN_IDENTITY", e.Config.Cert.Issuer.CommonName)
+		a.configureBuildSetting(ctx, cc, "CODE_SIGN_STYLE", "Manual")
+
+		err = a.API.KeyChainService().
+			ImportCertificate(ctx, e.Config.Cert.FilePath, a.CodeSignOption.CertificatePassword)
+		fmt.Println("importing cert", err)
+	}
+
+	// The archiving arguments
+	args := []string{
 		a.API.XCodeBuildService().GetArg(),
 		a.API.XCodeBuildService().GetProjectPath(),
 		xcode.ActionArchive,
-		xcode.FlagScheme, config.Scheme,
-		"CODE_SIGN_IDENTITY=iPhone developer: Self signer",
-		"CODE_SIGN_STYLE=Manual",
-		"DEVELOPMENT_TEAM=12345ABCDE",
-		"PROVISIONING_PROFILE_SPECIFIER=B5C2906D-D6EE-476E-AF17-D99AE14644AA",
+		xcode.FlagScheme, a.Config.Scheme,
+		xcode.FlagConfiguration, a.Config.Configuration,
+		xcode.FlagArchivePath, fmt.Sprintf("%v/archive/toto.xcarchive", a.Config.Path),
+	}
 
-		// "-xcconfig", "/var/folders/m1/s05mrl8s4fbfw8zf4hw04tjwh740pl/T/do-the-thing-736615920/file.xcconfig",
-	),
-	)
-	//"CODE_SIGNING_ALLOWED=NO"))
+	// fmt.Println(pj.Name, cfg)
+	defer a.API.KeyChainService().Delete(ctx)
+
+	return RunCmd(a.API.Exec().CommandContext(ctx, xcode.Cmd, args...))
 }

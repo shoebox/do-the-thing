@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
+	"sync"
 
 	"go.mozilla.org/pkcs7"
 )
@@ -57,10 +57,31 @@ func (p provisioningService) Decode(ctx context.Context, r io.Reader) (api.Provi
 	}
 
 	// For more convenience compute the bundle identifier without the teamID prefix.
-	pp.BundleIdentifier = strings.TrimPrefix(pp.Entitlements.AppID,
-		fmt.Sprintf("%s.", pp.Entitlements.TeamID))
+	pp.BundleIdentifier = strings.TrimSpace(strings.TrimPrefix(pp.Entitlements.AppID,
+		fmt.Sprintf("%s.", pp.Entitlements.TeamID)))
 
 	return pp, err
+}
+
+func (p provisioningService) Install(pp *api.ProvisioningProfile) error {
+	input, err := ioutil.ReadFile(pp.FilePath)
+	if err != nil {
+		return err
+	}
+
+	// Retrieving the user home directory
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	// Formatting the provisioning path
+	fn := fmt.Sprintf("%v/Library/MobileDevice/Provisioning Profiles/%v.mobileprovision",
+		dir,
+		pp.UUID)
+
+	// Writing the file
+	return ioutil.WriteFile(fn, input, os.ModePerm)
 }
 
 // isProvisioningFile check if the candidate is a valid provisioning file by testing it's
@@ -79,7 +100,6 @@ func (p provisioningService) walkOnPath(
 	cpath chan string,
 	info os.FileInfo,
 ) error {
-
 	// Check if the file is a provisioning file
 	if !isProvisioningFile(info) {
 		return nil
@@ -98,48 +118,56 @@ func (p provisioningService) decodeRawProvisioning(
 	ctx context.Context,
 	filepath string,
 	reader io.ReadCloser,
-	cprovisioning chan api.ProvisioningProfile,
-) error {
+) (*api.ProvisioningProfile, error) {
 	defer reader.Close()
 
 	// Which try to decode the candidate provisioning file
 	dpp, err := p.Decode(ctx, reader)
+
 	if err != nil {
 		// Here we do not return the error, like we do not want the parent errgroup to fail
-		return err
+		return nil, err
 	}
 
 	dpp.FilePath = filepath
 
-	//Use a select statement to exit out if context expires
-	select {
-	case <-ctx.Done(): // Handle context cancelation
-		return nil
-	case cprovisioning <- dpp: // Add the decoded provisioning to the channel
-		return nil
-	}
+	return &dpp, nil
 }
 
 // readProvisioningFile Read the provided file at path and try to decode it as provisioning
 func (p provisioningService) readProvisioningFile(
 	ctx context.Context,
 	path string,
-	cprovisioning chan api.ProvisioningProfile,
-) error {
+) (*api.ProvisioningProfile, error) {
 	// Open the file to a reader
 	f, err := p.API.FileService().Open(path)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 	defer f.Close()
 
 	// Read the content of the file
-	err = p.decodeRawProvisioning(ctx, path, f, cprovisioning)
+	return p.decodeRawProvisioning(ctx, path, f)
+}
 
-	// We only print the error and do not return it, as we do not want to have the errgroup stopped
-	log.Println(err)
+func (p provisioningService) decodingWorker(
+	id int,
+	wg *sync.WaitGroup,
+	ctx context.Context,
+	paths <-chan string,
+	res *[]*api.ProvisioningProfile,
+) {
+	wg.Add(1)
+	for value := range paths {
+		dpp, err := p.readProvisioningFile(ctx, value)
+		if err != nil {
+			fmt.Println("error while decoding", err)
+		} else {
+			*res = append(*res, dpp)
+		}
+	}
 
-	return nil
+	wg.Done()
 }
 
 // ResolveProvisioningFilesInFolder walk the provided root path and resolve all provisioning
@@ -147,39 +175,23 @@ func (p provisioningService) readProvisioningFile(
 func (p provisioningService) ResolveProvisioningFilesInFolder(
 	ctx context.Context,
 	root string,
-) []api.ProvisioningProfile {
-	res := []api.ProvisioningProfile{}
+) []*api.ProvisioningProfile {
 
-	// Channel of provisionings
-	provisionings := make(chan api.ProvisioningProfile)
+	paths := make(chan string)
+	var res []*api.ProvisioningProfile
 
-	// Use the file service walk helper to find candidates provisioning file
-	errgroup := p.API.FileService().Walk(ctx, root, isProvisioningFile,
-		// And for each candidate
-		func(ctx context.Context, path string) error {
-			// We try to read a valid provisioning file
-			return p.readProvisioningFile(ctx, path, provisionings)
-		})
-
-	go func() {
-		// Waiting for the goroutines to complete
-		errgroup.Wait()
-
-		// Closing the channel
-		close(provisionings)
-	}()
-
-	// Convert the channel result to a slice
-	for pp := range provisionings {
-		res = append(res, pp)
+	var wg sync.WaitGroup
+	// Increment waitgroup counter and create go routines
+	for i := 0; i < 8; i++ {
+		go p.decodingWorker(i, &wg, ctx, paths, &res)
 	}
 
-	// Check whether any of the goroutines failed. Since the error group is accumulating the
-	// errors, we don't need to send them (or check for them) in the individual
-	// results sent on the channel.
-	if err := errgroup.Wait(); err != nil {
-		return res
+	err := p.API.FileService().Walk(ctx, root, isProvisioningFile, paths, &wg)
+
+	if err != nil {
+		fmt.Println("err ", err)
 	}
+	wg.Wait()
 
 	return res
 }
