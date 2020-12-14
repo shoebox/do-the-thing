@@ -35,7 +35,7 @@ func (a actionRunTest) Run(ctx context.Context) error {
 
 }
 func (a actionRunTest) runXCodebuildTest(ctx context.Context, path string) error {
-	fmt.Println(color.BlueString("Running test on %v (%v)", a.Config.Destination.Name, a.Config.Destination.Id))
+	fmt.Println(color.BlueString("Running test on %v (%v)", a.Config.Destination.Name, a.Config.Destination.ID))
 
 	return RunCmd(a.API.Exec().CommandContext(ctx,
 		xcode.Cmd,
@@ -43,7 +43,7 @@ func (a actionRunTest) runXCodebuildTest(ctx context.Context, path string) error
 		a.API.XCodeBuildService().GetProjectPath(),
 		xcode.ActionTest,
 		xcode.FlagScheme, a.Config.Scheme,
-		xcode.FlagDestination, fmt.Sprintf("id=%s", a.Config.Destination.Id),
+		xcode.FlagDestination, fmt.Sprintf("id=%s", a.Config.Destination.ID),
 		xcode.FlagResultBundlePath, path,
 		"-showBuildTimingSummary",
 		"CODE_SIGNING_ALLOWED=NO"))

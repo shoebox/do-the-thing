@@ -7,10 +7,11 @@ require (
 	github.com/briandowns/spinner v1.10.0
 	github.com/fatih/color v1.7.0
 	github.com/fatih/structs v1.1.0
+	github.com/go-delve/delve v1.5.1 // indirect
 	github.com/mitchellh/mapstructure v1.2.2
 	github.com/reviewdog/reviewdog v0.10.0
 	github.com/rs/zerolog v1.18.0
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.5.1
 	github.com/tidwall/gjson v1.6.0

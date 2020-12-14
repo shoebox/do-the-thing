@@ -1,8 +1,8 @@
 package destination
 
-/*
 import (
 	"context"
+	"dothething/internal/api"
 	"dothething/internal/utiltest"
 	"dothething/internal/xcode"
 	"errors"
@@ -14,31 +14,35 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+var dest = api.Destination{ID: "123-456-789"}
+
 type DestinationTestSuite struct {
+	API            *api.APIMock
+	cancel         func()
+	ctx            context.Context
+	mockCmd        *utiltest.MockExecutorCmd
+	mockExecutor   *utiltest.MockExecutor
+	mockXcodeBuild *xcode.XCodeBuildMock
+	subject        destinationService
 	suite.Suite
-	cancel   context.CancelFunc
-	ctx      context.Context
-	cmd      *utiltest.MockExecutorCmd
-	dest     Destination
-	subject  destinationService
-	executor *utiltest.MockExecutor
-	xcode    xcode.BuildService
 }
 
+// suite testing entrypoint
 func TestExampleTestSuite(t *testing.T) {
 	suite.Run(t, new(DestinationTestSuite))
 }
 
 func (s *DestinationTestSuite) BeforeTest(suiteName, testName string) {
-	s.cmd = new(utiltest.MockExecutorCmd)
-	s.dest = destination.Destination{Id: "123-456-789"}
-	s.executor = new(utiltest.MockExecutor)
-	s.xcode = xcode.NewService(s.executor, "/path/to/project.pbxproj")
-	s.subject = destinationService{s.xcode, s.executor}
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	s.mockCmd = new(utiltest.MockExecutorCmd)
+	s.mockExecutor = new(utiltest.MockExecutor)
+	s.mockXcodeBuild = new(xcode.XCodeBuildMock)
 
-	s.ctx = ctx
-	s.cancel = cancel
+	s.API = new(api.APIMock)
+	s.API.On("Exec").Return(s.mockExecutor)
+	s.API.On("XCodeBuildService").Return(s.mockXcodeBuild)
+
+	s.ctx, s.cancel = context.WithTimeout(context.Background(), 1*time.Second)
+	s.subject = destinationService{s.API}
 }
 
 func (s *DestinationTestSuite) AfterTest(suiteName, testName string) {
@@ -47,88 +51,62 @@ func (s *DestinationTestSuite) AfterTest(suiteName, testName string) {
 
 func (s *DestinationTestSuite) TestBootShouldHandleResults() {
 	// setup:
-	s.cmd.
-		On("Output").
-		Return("result", nil)
-
-	s.executor.
-		On("CommandContext",
-			mock.Anything,
-			xcRun, []string{simCtl, actionBootStatus, s.dest.Id, flagBoot}).
-		Return(s.cmd)
+	s.mockExecutor.MockCommandContext(
+		xcRun,
+		[]string{simCtl, actionBootStatus, dest.ID, flagBoot},
+		"", nil,
+	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
-	// when:
-	err := s.subject.Boot(ctx, s.dest)
+	// when: Bootign the destination
+	err := s.subject.Boot(ctx, dest)
 
-	// then:
+	// then: No error should be reported
 	s.Assert().NoError(err)
 }
 
 func (s *DestinationTestSuite) TestBootShouldHandleError() {
 	// setup:
-	s.cmd.
-		On("Output").
-		Return("result", errors.New("Error text"))
-
-	s.executor.
-		On("CommandContext",
-			s.ctx,
-			xcRun, []string{simCtl, actionBootStatus, s.dest.Id, flagBoot}).
-		Return(s.cmd)
+	s.mockExecutor.MockCommandContext(xcRun,
+		[]string{simCtl, actionBootStatus, dest.ID, flagBoot},
+		"", errors.New("error text"))
 
 	// when:
-	err := s.subject.Boot(s.ctx, s.dest)
+	err := s.subject.Boot(s.ctx, dest)
 
 	// then:
-	s.Assert().EqualError(err, "Error text")
+	s.Assert().EqualValues(err, NewBootError(dest.ID))
 }
 
 func (s *DestinationTestSuite) TestShutdown() {
 	// setup:
-	s.cmd.
-		On("Output").
-		Return("result", errors.New("Error text"))
+	dest := api.Destination{ID: "123-456-789"}
 
-	s.executor.
-		On("CommandContext",
-			s.ctx,
-			xcRun, []string{simCtl, actionShutdown, s.dest.Id}).
-		Return(s.cmd)
+	s.mockExecutor.MockCommandContext(xcRun,
+		[]string{simCtl, actionShutdown, dest.ID},
+		"", errors.New("error text"))
 
 	// when:
-	err := s.subject.ShutDown(s.ctx, s.dest)
+	err := s.subject.ShutDown(s.ctx, dest)
 
 	// then:
-	s.Assert().EqualValues(errors.New("Error text"), err)
+	s.Assert().EqualValues(err, NewShutDownError(dest.ID))
 }
 
-func (s *DestinationTestSuite) TestList() {
-	// setup:
-	s.cmd.
-		On("Output").
-		Return("result", errors.New("toto"))
+func (s *DestinationTestSuite) TestDestinationListingShouldHandleErrors() {
+	scheme := "test"
 
-	s.executor.
-		On("CommandContext",
-			s.ctx,
-			xcode.Cmd,
-			[]string{
-				xcode.FlagShowDestinations,
-				xcode.FlagProject,
-				"/path/to/project.pbxproj",
-				xcode.FlagScheme,
-				"test",
-			}).
-		Return(s.cmd)
+	s.mockXcodeBuild.
+		On("ShowDestinations", mock.Anything, scheme).
+		Return("", errors.New("error"))
 
 	// when:
-	dest, err := s.subject.List(s.ctx, "test")
+	dest, err := s.subject.List(s.ctx, scheme)
 
 	// then:
-	s.Assert().EqualError(err, "Error -1 - Unknown error")
+	s.Assert().EqualError(err, NewListingError().Error())
 	s.Assert().Empty(dest)
 }
 
@@ -145,42 +123,67 @@ func (s *DestinationTestSuite) TestDestinationsParsing() {
 	res := s.subject.parseDestinations(data)
 
 	// then:
-	s.Assert().EqualValues(Destination{
+	s.Assert().EqualValues(api.Destination{
 		Name:     "iPad",
 		OS:       "13.3",
-		Id:       "20ADB361-71A8-4D73-8F5D-38241750CBF5",
+		ID:       "20ADB361-71A8-4D73-8F5D-38241750CBF5",
 		Platform: "iOS Simulator",
 	}, res[0])
 }
 
-func TestFillStruct(t *testing.T) {
-	t.Run("Should populate multiple values", func(t *testing.T) {
-		// setup:
-		dest := Destination{}
+func (s *DestinationTestSuite) TestDestinationSectionDetection() {
+	cases := []struct {
+		line     string
+		expected bool
+		start    bool
+		res      []api.Destination
+	}{
+		{line: `Available destinations for the "test" scheme:`, expected: true},
+		{line: `Toto`, expected: false},
+		{line: `Available destinations for the "hello world" scheme:`, expected: true},
+	}
 
-		m := map[string]string{}
-		m["platform"] = "fake-platform"
-		m["id"] = "fake-id"
-
+	for _, c := range cases {
 		// when:
-		fillStruct(m, &dest)
+		s.subject.parseLine(c.line, &c.start, &c.res)
 
 		// then:
-		assert.EqualValues(t, dest, Destination{Id: "fake-id", Platform: "fake-platform"})
-	})
-
-	t.Run("Should handle invalid fields", func(t *testing.T) {
-		// setup:
-		dest := Destination{}
-		m := map[string]string{}
-		m["toto"] = "tutu"
-		m["OS"] = "fake-os"
-
-		// when:
-		fillStruct(m, &dest)
-
-		// then:
-		assert.EqualValues(t, dest, Destination{OS: "fake-os"})
-	})
+		s.Assert().Equal(c.expected, c.start)
+	}
 }
-*/
+
+func TestFillStruct(t *testing.T) {
+	var fakeID string = "fake-id"
+	var fakePlatform string = "fake-platform"
+	var fakeOS string = "fake-os"
+
+	cases := []struct {
+		name string
+		d    api.Destination
+		m    map[string]string
+	}{
+		{
+			name: "Should populate multiple values",
+			m:    map[string]string{"Platform": fakePlatform, "ID": fakeID},
+			d:    api.Destination{ID: fakeID, Platform: fakePlatform},
+		},
+		{
+			name: "Should handle invalid fields",
+			m:    map[string]string{"toto": "osef", "OS": fakeOS},
+			d:    api.Destination{OS: fakeOS},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// setup:
+			dest := api.Destination{}
+
+			// when:
+			fillStruct(c.m, &dest)
+
+			// then:
+			assert.EqualValues(t, c.d, dest)
+		})
+	}
+}

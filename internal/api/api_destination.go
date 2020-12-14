@@ -6,7 +6,7 @@ import "context"
 type Destination struct {
 	Name     string
 	Platform string
-	Id       string
+	ID       string
 	OS       string
 }
 

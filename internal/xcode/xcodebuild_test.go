@@ -1,113 +1,131 @@
 package xcode
 
-/*
+import (
+	"context"
+	"dothething/internal/api"
+	"dothething/internal/utiltest"
+	"errors"
+	"testing"
+
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
+)
+
+const pathWorkspace = "/path/to/project.xcworkspace"
+const pathProject = "/path/to/project.xcodeproj"
+
 type XCodebuildSuite struct {
 	suite.Suite
-	cmd      *utiltest.MockExecutorCmd
-	ctx      context.Context
-	cancel   context.CancelFunc
-	subject  BuildService
-	executor *utiltest.MockExecutor
-	path     string
+
+	api     *api.APIMock
+	cfg     *api.Config
+	subject xcodeBuildService
+
+	mockCmd      *utiltest.MockExecutorCmd
+	mockExecutor *utiltest.MockExecutor
 }
 
 func TestXCodebuildSuite(t *testing.T) {
 	suite.Run(t, new(XCodebuildSuite))
 }
 
-func (s *XCodebuildSuite) BeforeTest(suiteName, testName string) {
-	s.executor = new(utiltest.MockExecutor)
-	s.path = "/path/to/project.xcworkspace"
-	s.subject = NewService(s.executor, s.path)
-	s.cmd = new(utiltest.MockExecutorCmd)
-	s.ctx, s.cancel = context.WithTimeout(context.Background(), 60*time.Second)
+func (x *XCodebuildSuite) BeforeTest(suiteName, testName string) {
+	x.cfg = new(api.Config)
+	x.cfg.Path = pathWorkspace
+
+	x.mockCmd = new(utiltest.MockExecutorCmd)
+	x.mockExecutor = new(utiltest.MockExecutor)
+
+	x.api = new(api.APIMock)
+	x.api.On("Exec").Return(x.mockExecutor)
+
+	x.subject = xcodeBuildService{x.api, x.cfg}
 }
 
-func (s *XCodebuildSuite) AfterTest(suiteName, testName string) {
-	s.cancel()
-}
-
-func (s *XCodebuildSuite) TestNewServiceFlag() {
+func (x *XCodebuildSuite) TestXCodeBuildArgumentDependingOfProjectType() {
 	cases := []struct {
-		path string
-		flag string
+		path     string
+		arg      string
+		expected string
 	}{
-		{path: "/path/to/project.xcodeproj", flag: FlagProject},
-		{path: "/path/to/project.xcworkspace", flag: FlagWorkspace},
+		{path: "~/dev/test.xcodeproj", expected: FlagProject},
+		{path: "~/dev/test.xcworkspace", expected: FlagWorkspace},
+		{path: "~/dev/", expected: FlagProject},
+		{path: pathProject, expected: FlagProject},
+		{path: pathWorkspace, expected: FlagWorkspace},
 	}
 
-	for _, tc := range cases {
-		// when:
-		res := NewService(s.executor, tc.path)
+	for _, c := range cases {
+		x.Run(c.path, func() {
+			// setup:
+			x.cfg.Path = c.path
 
-		// then:
-		b, ok := res.(xcodeBuildService)
-		s.Assert().True(ok, "Should be true")
+			// when:
+			res := x.subject.GetArg()
 
-		// and:
-		s.Assert().EqualValues(b.arg, tc.flag, "Xcodebuild should be invoked with the right flag")
+			// then:
+			x.Assert().EqualValues(c.expected, res)
+		})
 	}
 }
 
-func (s *XCodebuildSuite) TestListShouldHandleError() {
-	// setup:
-	s.cmd.On("Output").Return("", errors.New("Fake error"))
+func (x *XCodebuildSuite) TestList() {
+	cases := []struct {
+		name           string
+		output         string
+		err            error
+		expectedResult string
+		expectedError  error
+		path           string
+		flag           string
+	}{
+		{path: pathWorkspace, flag: FlagWorkspace, name: "error", output: "", err: errors.New("fake error"), expectedResult: "", expectedError: NewError(-1)},
+		{path: pathProject, flag: FlagProject, name: "error", output: "", err: errors.New("fake error"), expectedResult: "", expectedError: NewError(-1)},
+		{path: pathWorkspace, flag: FlagWorkspace, name: "basic", output: "hello-world", expectedResult: "hello-world", expectedError: nil},
+	}
 
-	s.executor.On("CommandContext",
-		mock.Anything,
-		Cmd,
-		[]string{FlagList, FlagJSON, "-workspace", s.path}).
-		Return(s.cmd)
+	for _, c := range cases {
+		x.Run(c.name, func() {
+			// setup:
+			x.BeforeTest("XCodebuildSuite", c.name)
+			x.cfg.Path = c.path
+			x.mockCmd.On("CombinedOutput").Return(c.output, c.err)
+			x.mockExecutor.On("CommandContext",
+				mock.Anything,
+				Cmd,
+				[]string{FlagList, FlagJSON, c.flag, c.path}).
+				Return(x.mockCmd)
 
-	// whhen
-	res, err := s.subject.List(s.ctx)
+			// when:
+			res, err := x.subject.List(context.Background())
 
-	// then:
-	s.Assert().Empty(res, "No result should be returned")
-	s.Assert().EqualError(err, "Error -1 - Unknown error", "The same error should be return")
+			// then:
+			x.Assert().EqualValues(c.expectedError, err)
+			x.Assert().EqualValues(c.expectedResult, res)
+		})
+	}
 }
 
-func (s *XCodebuildSuite) TestListShouldReturnResult() {
-	// setup:
+func (x *XCodebuildSuite) TestShowDestinations() {
 	txt := "Destination list text"
-	s.cmd.On("Output").Return(txt, nil)
 
-	s.executor.On("CommandContext",
-		mock.Anything,
-		Cmd,
-		[]string{FlagList, FlagJSON, "-workspace", s.path}).
-		Return(s.cmd)
-
-	// whhen
-	res, err := s.subject.List(s.ctx)
-
-	// then:
-	s.Assert().EqualValues(res, txt)
-	s.Assert().NoError(err)
-}
-
-func (s *XCodebuildSuite) TestShowDestinations() {
 	// setup:
-	txt := "Destination list text"
-	s.cmd.On("Output").Return(txt, nil)
-
-	s.executor.On("CommandContext",
-		s.ctx,
+	x.mockExecutor.MockCommandContext(
 		Cmd,
 		[]string{
 			FlagShowDestinations,
 			FlagWorkspace,
-			s.path,
+			pathWorkspace,
 			FlagScheme,
 			"test",
-		}).
-		Return(s.cmd)
-
+		},
+		txt,
+		nil,
+	)
 	// whhen
-	res, err := s.subject.ShowDestinations(s.ctx, "test")
+	res, err := x.subject.ShowDestinations(context.Background(), "test")
 
 	// then:
-	s.Assert().EqualValues(res, txt)
-	s.Assert().NoError(err)
+	x.Assert().EqualValues(res, txt)
+	x.Assert().NoError(err)
 }
-*/
