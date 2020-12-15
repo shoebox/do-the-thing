@@ -34,3 +34,10 @@ jobs:
 
     - name: Test
       run: go test ./... -tags mock -coverprofile=coverage.txt -covermode=atomic
+
+    - name: Upload coverage report
+      uses: codecov/codecov-action@v1.0.2
+      with:
+        file: ./coverage.txt
+        flags: unittests
+        name: codecov-umbrella
