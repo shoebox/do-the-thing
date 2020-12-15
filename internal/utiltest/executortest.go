@@ -23,3 +23,6 @@ func (m *MockExecutor) MockCommandContext(cmd string, args []string, res string,
 
 	m.On("CommandContext", mock.Anything, cmd, args).Return(c)
 }
+func (m *MockExecutor) MockCommandContextError(cmd string, args []string, err error) {
+	m.MockCommandContext(cmd, args, "", err)
+}

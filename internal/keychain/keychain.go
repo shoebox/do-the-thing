@@ -30,6 +30,8 @@ const (
 	FlagNonExtractable     = "-x"
 )
 
+var searchListRegexp = regexp.MustCompile(`^(?:\t|(?:\s)+)?"(.*)"`)
+
 type keychain struct {
 	filePath string
 	api.API
@@ -38,7 +40,7 @@ type keychain struct {
 func NewKeyChain(api api.API) (api.KeyChain, error) {
 	tmpDir, err := ioutil.TempDir("", "do-the-thing-*")
 	if err != nil {
-		return nil, err
+		return nil, KeyChainError{msg: fileError, err: err}
 	}
 
 	return keychain{
@@ -71,6 +73,10 @@ func (k keychain) Delete(ctx context.Context) error {
 		SecurityUtil, ActionDeleteKeychain,
 		k.filePath).Output()
 
+	if err != nil {
+		err = KeyChainError{msg: deleteError}
+	}
+
 	return err
 }
 
@@ -86,13 +92,17 @@ func (k keychain) ImportCertificate(ctx context.Context, filePath, password stri
 		FlagNonExtractable).
 		Output()
 
+	if err != nil {
+		err = CertificateImportError(err)
+	}
+
 	return err
 }
 
 // createKeychain Create keychain with provided password
 func (k keychain) createKeychain(ctx context.Context, password string) error {
 	if len(password) == 0 {
-		return errors.New("Keychain password should not be empty")
+		return KeyChainError{msg: createError, err: errors.New("Keychain password should not be empty")}
 	}
 
 	_, err := k.API.Exec().CommandContext(ctx,
@@ -101,13 +111,24 @@ func (k keychain) createKeychain(ctx context.Context, password string) error {
 		FlagPassword, password, // Use password as the password for the keychains being created.
 		k.filePath).Output()
 
+	if err != nil {
+		err = KeyChainError{msg: createError, err: err}
+	}
+
 	return err
 }
 
 // configureKeychain : Set settings for keychain, or the default keychain if none is specified
 func (k keychain) configureKeychain(ctx context.Context) error {
 	// Omitting the timeout argument (-t) specified no-timeout
-	_, err := k.API.Exec().CommandContext(ctx, SecurityUtil, ActionSettings, k.filePath).Output()
+	_, err := k.API.
+		Exec().
+		CommandContext(ctx, SecurityUtil, ActionSettings, k.filePath).
+		Output()
+
+	if err != nil {
+		err = KeyChainError{msg: configureError, err: err}
+	}
 
 	return err
 }
@@ -128,6 +149,10 @@ func (k keychain) setPartitionList(ctx context.Context, password string, descrip
 
 	log.Debug().Msg(string(b))
 
+	if err != nil {
+		err = KeyChainError{msg: partitionError, err: err}
+	}
+
 	return err
 }
 
@@ -141,13 +166,15 @@ func (k keychain) addKeyChainToSearchList(ctx context.Context) error {
 }
 
 func (k keychain) getSearchList(ctx context.Context) ([]string, error) {
+	var res []string
 	// Display the the keychain search list without any specified domain
 	// TODO: Maybe necessary to define the domain later?
 	b, err := k.API.Exec().
 		CommandContext(ctx, SecurityUtil, ActionListKeyChains).
 		Output()
+
 	if err != nil {
-		return nil, err
+		return res, err
 	}
 
 	return parseSearchList(b), nil
@@ -155,25 +182,40 @@ func (k keychain) getSearchList(ctx context.Context) ([]string, error) {
 
 func parseSearchList(data []byte) []string {
 	var res []string
-	r := regexp.MustCompile(`^(?:\t|(?:\s)+)?"(.*)"`)
 
-	// Parse each line and try to parse the keychain path
+	// Parse each line and try to parse the keychain p ath
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	for scanner.Scan() {
 		txt := scanner.Text()
-		if r.MatchString(txt) {
-			sm := r.FindStringSubmatch(txt)
-			res = append(res, sm[1])
+		l := isSearchListEntry(txt)
+		if l != "" {
+			res = append(res, l)
 		}
 	}
 
 	return res
 }
 
+func isSearchListEntry(txt string) string {
+	if searchListRegexp.MatchString(txt) {
+		sm := searchListRegexp.FindStringSubmatch(txt)
+		return sm[1]
+	}
+
+	return ""
+}
+
+// setSearchList will set the keychain search list
 func (k keychain) setSearchList(ctx context.Context, list []string) error {
+	// appending argumets
 	args := append([]string{ActionListKeyChains, "-s"}, list...)
+
+	//
 	_, err := k.API.Exec().
 		CommandContext(ctx, SecurityUtil, args...).
 		Output()
+
+	// TODO: Handle return
+
 	return err
 }

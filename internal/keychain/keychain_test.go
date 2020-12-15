@@ -2,22 +2,37 @@ package keychain
 
 import (
 	"context"
+	"dothething/internal/api"
 	"dothething/internal/utiltest"
+	"errors"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/suite"
 )
 
-var errText = "mock error"
+const (
+	k1 = "/test/test1.keychain"
+	k2 = "/test/test2/test3.keychain"
+)
+
+var (
+	errText      = "mock error"
+	passwd       = "p4ssword"
+	keychainPath = "/path/to/file.keychain"
+)
 
 type keychainTestSuite struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	cmd    *utiltest.MockExecutorCmd
 	suite.Suite
-	subject  keychain
-	executor *utiltest.MockExecutor
+	API     *api.APIMock
+	exec    *utiltest.MockExecutor
+	subject keychain
+	/*
+		ctx    context.Context
+		cancel context.CancelFunc
+		cmd    *utiltest.MockExecutorCmd
+		subject  keychain
+		executor *utiltest.MockExecutor
+	*/
 }
 
 func TestKeychainSuite(t *testing.T) {
@@ -25,184 +40,234 @@ func TestKeychainSuite(t *testing.T) {
 }
 
 func (s *keychainTestSuite) BeforeTest(suiteName, testName string) {
-	s.executor = new(utiltest.MockExecutor)
-	s.cmd = new(utiltest.MockExecutorCmd)
+	s.exec = new(utiltest.MockExecutor)
+	s.API = new(api.APIMock)
+	s.API.On("Exec").Return(s.exec)
+	s.subject = keychain{API: s.API}
+	//s.executor = new(utiltest.MockExecutor)
+	//s.cmd = new(utiltest.MockExecutorCmd)
 	// s.subject = keychain{s.executor, "/path/to/file.keychain"}
-	s.ctx, s.cancel = context.WithTimeout(context.Background(), 60*time.Second)
+	//s.ctx, s.cancel = context.WithTimeout(context.Background(), 60*time.Second)
 }
 
 func (s *keychainTestSuite) AfterTest(suiteName, testName string) {
-	s.cancel()
 }
 
-/*
+func (s *keychainTestSuite) TestNewKeychain() {
+	// when:
+	_, err := NewKeyChain(s.API)
+
+	// then:
+	s.Assert().NoError(err)
+}
+
 func (s *keychainTestSuite) TestCreateShouldHandleErrors() {
 	errText := "mock error"
 
 	// setup:
-	s.configureCommandOutput(
+	s.exec.MockCommandContext(
 		SecurityUtil,
 		[]string{ActionCreateKeychain, FlagPassword, "p4ssword", s.subject.GetPath()},
 		"",
-		&errText)
+		errors.New(errText))
 
 	// when:
-	err := s.subject.Create(s.ctx, "p4ssword")
+	err := s.subject.Create(context.Background(), passwd)
 
 	// then:
-	s.Assert().EqualError(err, errText)
-}
-
-func (s *keychainTestSuite) TestImportCertificateShouldHandleErrors() {
-	// setup:
-	passwd := "p4ssword"
-
-	s.configureCommandOutput(
-		SecurityUtil,
-		[]string{
-			ActionImport,
-			"toto/file.p12",
-			FlagKeychain, s.subject.GetPath(),
-			FlagPassphase, passwd,
-			FlagAppPath, "/usr/bin/codesign",
-			FlagNonExtractable,
-		},
-		"",
-		&errText)
-
-	// when:
-	err := s.subject.ImportCertificate(s.ctx, "toto/file.p12", passwd, "")
-
-	// then:
-	s.Assert().EqualError(err, errText)
-}
-
-func (s *keychainTestSuite) TestKeyChainConfiguration() {
-	// setup
-	s.configureCommandOutput(
-		SecurityUtil,
-		[]string{ActionSettings, s.subject.GetPath()},
-		"",
-		&errText)
-
-	// when:
-	err := s.subject.configureKeychain(s.ctx)
-
-	// then:
-	s.Assert().EqualError(err, errText)
+	s.Assert().EqualValues(err,
+		KeyChainError{
+			msg: createError,
+			err: errors.New(errText),
+		})
 }
 
 func (s *keychainTestSuite) TestKeyChainCreatePasswordShouldNotBeEmpty() {
 	// when:
-	err := s.subject.createKeychain(s.ctx, "")
+	err := s.subject.createKeychain(context.Background(), "")
 
 	// then:
-	s.Assert().EqualError(err, "Keychain password should not be empty")
+	s.Assert().EqualValues(err,
+		KeyChainError{
+			msg: createError,
+			err: errors.New("Keychain password should not be empty"),
+		})
+}
+
+func (s *keychainTestSuite) TestKeyChainConfiguration() {
+	// setup
+	s.subject.filePath = k1
+	s.exec.MockCommandContext(SecurityUtil,
+		[]string{ActionSettings, k1},
+		"",
+		errors.New(errText))
+
+	// when:
+	err := s.subject.configureKeychain(context.Background())
+
+	// then:
+	s.Assert().EqualValues(err,
+		KeyChainError{
+			msg: configureError,
+			err: errors.New(errText),
+		})
 }
 
 func (s *keychainTestSuite) TestSetPartitionList() {
 	// setup
-	s.configureCommandOutput(
-		SecurityUtil,
-		[]string{
-			ActionSetPartitionList,
-			FlagPartitionList, "apple:,apple-tool:,codesign:", // Partition ID
-			"-s",             // Match keys that can sign
-			"-k", "p4ssword", // Password for keychain
-			"-D", "description", // Match description string
-			"-t", "private", // We are looking for a private key
-			"/path/to/file.keychain",
-		},
+	s.exec.MockCommandContext(SecurityUtil, []string{
+		ActionSetPartitionList,
+		FlagPartitionList, "apple:,apple-tool:,codesign:", // Partition ID
+		"-s",         // Match keys that can sign
+		"-k", passwd, // Password for keychain
+		"-D", "description", // Match description string
+		"-t", "private", // We are looking for a private key
+		keychainPath,
+	},
 		"",
-		&errText)
+		errors.New(errText),
+	)
 
 	// when:
-	err := s.subject.setPartitionList(s.ctx, "p4ssword", "description")
-	s.Assert().EqualError(err, errText)
+	s.subject.filePath = keychainPath
+	err := s.subject.setPartitionList(context.Background(), passwd, "description")
+
+	// then:
+	s.Assert().EqualValues(err,
+		KeyChainError{
+			msg: partitionError,
+			err: errors.New(errText),
+		})
 }
 
-func (s *keychainTestSuite) TestDelete() {
+func (s *keychainTestSuite) TestImportCertificateShouldHandleErrors() {
+	// setup:
+
+	s.exec.MockCommandContext(SecurityUtil, []string{
+		ActionImport,
+		"toto/file.p12",
+		FlagKeychain, s.subject.GetPath(),
+		FlagPassphase, passwd,
+		FlagAppPath, "/usr/bin/codesign",
+		FlagNonExtractable,
+	}, "", errors.New(errText))
+
+	// when: when trying to import a certificate who should fail
+	err := s.subject.ImportCertificate(context.Background(), "toto/file.p12", passwd)
+
+	// then: error should be reported
+	s.Assert().EqualValues(KeyChainError{msg: importError, err: errors.New(errText)}, err)
+}
+
+func (s *keychainTestSuite) TestDeleteKeychainShouldHandleError() {
 	// setup
 	file := "/path/to/file.keychain"
-	s.configureCommandOutput(
-		SecurityUtil,
-		[]string{ActionDeleteKeychain, file},
-		"",
-		&errText)
+	s.subject.filePath = file
+	s.exec.MockCommandContextError(SecurityUtil, []string{ActionDeleteKeychain, file}, errors.New("any"))
 
 	// when:
-	err := s.subject.Delete(s.ctx)
+	err := s.subject.Delete(context.Background())
 
 	// then:
-	s.Assert().EqualError(err, errText)
+	s.Assert().EqualError(err, deleteError)
 }
 
-func (s *keychainTestSuite) configureCommandOutput(name string,
-	args []string,
-	result string,
-	errTxt *string) {
+func (s *keychainTestSuite) TestGetSearchListInputOutputAndParsing() {
+	ctx := context.Background()
 
-	var err error
-	if errTxt != nil {
-		err = errors.New(*errTxt)
+	// setup:
+	cases := []struct {
+		expected []string
+		output   string
+		err      error
+	}{
+		{
+			output:   `    "/Users/user.name/Library/Keychains/login.keychain-db"`,
+			expected: []string{"/Users/user.name/Library/Keychains/login.keychain-db"},
+			err:      nil,
+		},
+		{
+			output: `    "/Users/user.name/Library/Keychains/login.keychain-db"
+    "/Users/user.name/Library/Keychains/test2.keychain-db"`,
+			expected: []string{
+				"/Users/user.name/Library/Keychains/login.keychain-db",
+				"/Users/user.name/Library/Keychains/test2.keychain-db",
+			},
+			err: nil,
+		},
+		{
+			output: "",
+			err:    errors.New("toto"),
+		},
 	}
 
-	s.cmd.
-		On("Output").
-		Return(result, err)
+	for _, c := range cases {
+		// setup:
+		s.BeforeTest("keychainTestSuite", "TestSetSearchListShouldHandleErrors")
+		s.exec.MockCommandContext(SecurityUtil, []string{ActionListKeyChains}, c.output, c.err)
 
-	s.executor.
-		On("CommandContext", s.ctx, name, args).
-		Return(s.cmd)
+		// when:
+		r, e := s.subject.getSearchList(ctx)
+
+		// and:
+		s.Assert().EqualValues(c.expected, r)
+		s.Assert().EqualValues(c.err, e)
+	}
 }
 
-func (s *keychainTestSuite) TestGetSearchListShouldReturnValidData() {
+func (s *keychainTestSuite) TestSetSearchListShouldHandleErrors() {
 	// setup:
-	s.configureCommandOutput(SecurityUtil,
-		[]string{ActionListKeyChains}, `
-    "/Users/fake/Library/Keychains/login.keychain-db"
-    "/Users/fake/toto"`,
-		nil)
+	errText := "mock error"
 
-	// when:
-	data, err := s.subject.getSearchList(s.ctx)
-
-	// then:
-	s.Assert().NoError(err)
-	s.Assert().EqualValues([]string{
-		"/Users/fake/Library/Keychains/login.keychain-db",
-		"/Users/fake/toto",
-	}, data)
-}
-
-func (s *keychainTestSuite) TestGetSearchListShouldHandleErrors() {
-	// setup:
-	s.configureCommandOutput(SecurityUtil,
-		[]string{ActionListKeyChains}, "", &errText)
-
-	// when:
-	data, err := s.subject.getSearchList(s.ctx)
-
-	// then:
-	s.Assert().EqualError(err, errText)
-	s.Assert().Empty(data)
-}
-
-func (s *keychainTestSuite) TestSetSearchList() {
-	// setup:
-	k1 := "/test/test1.keychain"
-	k2 := "/test/test2/test3.keychain"
-	list := []string{k1, k2}
-
-	s.configureCommandOutput(SecurityUtil,
-		[]string{ActionListKeyChains, "-s", k1, k2},
+	s.exec.MockCommandContext(
+		SecurityUtil,
+		[]string{
+			ActionListKeyChains,
+			"-s",
+			k1,
+			k2,
+		},
 		"",
-		&errText)
+		errors.New(errText),
+	)
 
 	// when:
-	err := s.subject.setSearchList(s.ctx, list)
+	err := s.subject.setSearchList(context.Background(), []string{k1, k2})
 
 	// then:
 	s.Assert().EqualError(err, errText)
 }
-*/
+
+func (s *keychainTestSuite) TestParseSearchListLine() {
+	cases := []struct {
+		line     string
+		expected string
+	}{
+		{
+			line:     `    "/Users/user.name/Library/Keychains/login.keychain-db"`,
+			expected: `/Users/user.name/Library/Keychains/login.keychain-db`,
+		},
+		{
+			line:     `    "/private/var/folders/m1/s05mrl8s4fbfw8zf4hw04tjwh740pl/T/do-the-thing-856917238/do-the-thing.keychain"`,
+			expected: "/private/var/folders/m1/s05mrl8s4fbfw8zf4hw04tjwh740pl/T/do-the-thing-856917238/do-the-thing.keychain",
+		},
+		{
+			line:     "/path/to",
+			expected: "",
+		},
+		{
+			line:     `    /path/to`,
+			expected: "",
+		},
+	}
+
+	for _, c := range cases {
+		s.Run(c.line, func() {
+			// when:
+			res := isSearchListEntry(c.line)
+
+			// then:
+			s.Assert().EqualValues(res, c.expected)
+		})
+	}
+}
