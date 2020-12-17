@@ -61,7 +61,7 @@ func (s service) configureBuildSetting(
 	for key, value := range m {
 		path := fmt.Sprintf("buildSettings:%v", key)
 
-		val, hasKey := cc.BuildSettings[key]
+		_, hasKey := cc.BuildSettings[key]
 		if hasKey {
 			err = s.API.PListBuddyService().SetStringValue(ctx, cc.Reference, path, value)
 		} else {
