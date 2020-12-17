@@ -6,11 +6,9 @@ import (
 	"dothething/internal/api"
 	"dothething/internal/xcode/pbx"
 	"errors"
-	"fmt"
+	"sort"
 	"strings"
 )
-
-var ErrNoMatchFound = errors.New("No match found")
 
 // NewResolver creates a new instance of the signature resolver to be use to find the
 // right signature configuration for the provided configuration (aka pair of certificate and
@@ -34,31 +32,37 @@ func (r signatureResolver) Resolve(
 ) (*api.SignatureConfiguration, error) {
 	var err error
 	var res api.SignatureConfiguration
-	fmt.Println("Resolve")
+
+	// resolving the candidates to match against
+	candidates := r.API.
+		ProvisioningService().
+		ResolveProvisioningFilesInFolder(ctx, r.Config.CodeSignOption.Path)
 
 	// Matching the right provisioning file for the project bundle identifier configuration
-	res.ProvisioningProfile, err = r.resolveProvisioningFileFor(ctx,
-		r.Config.CodeSignOption.Path,
+	if res.ProvisioningProfile, err = r.resolveProvisioningFileFor(
+		ctx,
+		candidates,
 		bundleIdentifier,
-		platform)
-	if err != nil {
-		return &res, err
+		platform,
+	); err != nil {
+		return nil, err
 	}
 
 	// The provisioning public key to match on
 	provisioningPublicKey := res.ProvisioningProfile.Certificates[0].Raw
 
 	// We iterate on all certificates found in the path
-	if res.Cert, err = r.findMatchingCert(
-		r.API.CertificateService().ResolveInFolder(ctx, r.Config.CodeSignOption.Path),
-		provisioningPublicKey,
-	); err != nil {
-		return nil, err
+	certs := r.API.CertificateService().ResolveInFolder(ctx, r.Config.CodeSignOption.Path)
+
+	// And we try to find a matching certificate to the provisioning profile
+	if res.Cert, err = r.findMatchingCert(certs, provisioningPublicKey); err != nil {
+		return nil, NewSignatureError(err, ErrorCertificateResolution)
 	}
 
 	return &res, nil
 }
 
+// findMatchingCert will check if a matching certificate can be found into the list
 func (r signatureResolver) findMatchingCert(certs []*api.P12Certificate, pc []byte) (*api.P12Certificate, error) {
 	for _, c := range certs {
 		if bytes.Compare(c.Raw, pc) == 0 {
@@ -71,44 +75,83 @@ func (r signatureResolver) findMatchingCert(certs []*api.P12Certificate, pc []by
 // resolveProvisioningFileFor will try to resolve a provisioning for the provided configuration
 func (r signatureResolver) resolveProvisioningFileFor(
 	ctx context.Context,
-	path string,
+	candidates []*api.ProvisioningProfile,
 	bundleIdentifier string,
 	platform pbx.PBXProductType,
 ) (*api.ProvisioningProfile, error) {
-	found, pp := r.findFor(r.API.ProvisioningService().ResolveProvisioningFilesInFolder(ctx, path),
-		bundleIdentifier,
-		platform)
 
-	// We have not found a match, raising an error
+	// resolving candidate
+	found, pp := r.findFor(candidates, bundleIdentifier, platform)
+
+	// we have not found a match, raising an error
 	if !found {
-		fmt.Println("match not found for bundleIdentifier", bundleIdentifier)
-		return nil, errors.New("ProvisioningProfile not found")
+		return nil, NewSignatureError(nil, ErrorProvisioningProfileResolution)
 	}
 
 	return pp, nil
 }
 
+// sortBundleIdentifiers will sort the bundle identifier by expiration date, and wildcards last
+func sortBundleIdentifiers(pps []*api.ProvisioningProfile) {
+	sort.SliceStable(pps, func(i, j int) bool {
+		ppi := pps[i]
+		ppj := pps[j]
+		// If both bundle identifier are a wildcard, we sort by expiration date
+		if ppi.BundleIdentifier == "*" && ppj.BundleIdentifier == "*" {
+			return ppj.ExpirationDate.After(ppi.ExpirationDate)
+		}
+
+		if ppi.BundleIdentifier == "*" {
+			return false
+		}
+
+		if ppj.BundleIdentifier == "*" {
+			return true
+		}
+
+		return ppj.ExpirationDate.After(ppi.ExpirationDate)
+	})
+}
+
+// findFor will try to resolve a matching provisioning profile into the provided list for the
+// required bundle identifier and platform
 func (r signatureResolver) findFor(
 	pps []*api.ProvisioningProfile,
 	bundleIdentifier string,
 	platform pbx.PBXProductType,
 ) (bool, *api.ProvisioningProfile) {
+	sortBundleIdentifiers(pps)
+
 	// We then iterate on the list to find a match against the project bundle identifier
 	for _, pp := range pps {
 		if !contains(pp.Platform, platform) {
 			continue
 		}
 
-		// Do we have a bundle identifier match
-		if pp.BundleIdentifier == "*" || pp.BundleIdentifier == bundleIdentifier {
+		// Wildcard
+		if pp.BundleIdentifier == "*" {
 			return true, pp
+		}
+
+		// Do we have a bundle identifier match
+		if pp.BundleIdentifier == bundleIdentifier {
+			return true, pp
+		}
+
+		// Wildcard domains
+		if strings.HasSuffix(pp.BundleIdentifier, "*") {
+			if strings.HasPrefix(bundleIdentifier, strings.TrimSuffix(pp.BundleIdentifier, ".*")) {
+				return true, pp
+			}
 		}
 	}
 
 	return false, nil
 }
 
+// contains will check that the PBX product type is contained into the provisioning profile capabilities
 func contains(a []string, v pbx.PBXProductType) bool {
+	// TODO: Adding support of watches...
 	var res bool
 	for _, s := range a {
 		switch v {

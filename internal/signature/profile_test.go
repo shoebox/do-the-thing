@@ -133,13 +133,11 @@ const invalidProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
 </plist>`
 
 const (
-	validPath   = "/path/to/file.provisioning"
-	invalidPath = "/path/to/file2.provisioning"
+	validPath = "/path/to/file.provisioning"
 )
 
 var (
-	subject     provisioningService
-	readerValid io.Reader
+	subject provisioningService
 )
 
 func TestMain(m *testing.M) {

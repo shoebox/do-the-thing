@@ -4,6 +4,17 @@ import (
 	"context"
 	"dothething/internal/api"
 	"dothething/internal/xcode/pbx"
+	"fmt"
+
+	"github.com/rs/zerolog/log"
+)
+
+const (
+	KeyDevelopmentTeam  = "DEVELOPMENT_TEAM"
+	KeyProfileSpecifier = "PROVISIONING_PROFILE_SPECIFIER"
+	KeySigningIdentity  = "CODE_SIGN_IDENTITY"
+	KeySigningStyle     = "CODE_SIGN_STYLE"
+	ManualSigning       = "Manual"
 )
 
 type service struct {
@@ -13,6 +24,99 @@ type service struct {
 
 func New(api api.API, cfg *api.Config) api.SignatureService {
 	return service{api, cfg}
+}
+
+func (s service) Run(ctx context.Context) error {
+	var res []api.TargetSignatureConfig
+
+	// Parsing project
+	pj, err := s.API.XCodeProjectService().Parse(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Found configuration, installing it into a temporary keychain
+	if err := s.API.KeyChainService().Create(ctx, "dothething"); err != nil {
+		return err
+	}
+
+	if err = s.forTarget(ctx, s.Config.Target, pj, &res); err != nil {
+		return err
+	}
+
+	for _, e := range res {
+		s.applyTargetConfiguration(ctx, pj, e.TargetName, e.Config)
+	}
+
+	return err
+}
+
+// configureBuildSetting will apply the build settings for the XCBuildConfiguration
+func (s service) configureBuildSetting(
+	ctx context.Context,
+	cc pbx.XCBuildConfiguration,
+	m map[string]string,
+) error {
+	var err error
+	for key, value := range m {
+		path := fmt.Sprintf("buildSettings:%v", key)
+
+		val, hasKey := cc.BuildSettings[key]
+		if hasKey {
+			err = s.API.PListBuddyService().SetStringValue(ctx, cc.Reference, path, value)
+		} else {
+			err = s.API.PListBuddyService().AddStringValue(ctx, cc.Reference, path, value)
+		}
+	}
+
+	return err
+}
+
+func (a service) applyTargetConfiguration(
+	ctx context.Context,
+	pj api.Project,
+	targetName string,
+	sc *api.SignatureConfiguration,
+) error {
+	log.Debug().Str("Target", targetName).Msg("Configure target")
+
+	// resolve target
+	tgt, err := pj.Pbx.FindTargetByName(targetName)
+	if err != nil {
+		return NewSignatureError(err, ErrorTargetResolution)
+	}
+
+	// resolve configuration
+	bc, err := tgt.BuildConfigurationList.FindConfiguration(a.Configuration)
+	if err != nil {
+		return NewSignatureError(err, ErrorBuildConfigurationResolution)
+	}
+
+	// installing provisioning profile
+	err = a.API.ProvisioningService().Install(sc.ProvisioningProfile)
+	if err != nil {
+		return NewSignatureError(err, ErrorProvisioningInstall)
+	}
+
+	if err = a.configureBuildSetting(
+		ctx,
+		bc,
+		map[string]string{
+			KeyDevelopmentTeam:  sc.ProvisioningProfile.Entitlements.TeamID,
+			KeyProfileSpecifier: sc.ProvisioningProfile.UUID,
+			KeySigningIdentity:  sc.Cert.Issuer.CommonName,
+			KeySigningStyle:     ManualSigning,
+		}); err != nil {
+		return err
+	}
+
+	if err = a.API.
+		KeyChainService().
+		ImportCertificate(ctx, sc.Cert.FilePath, a.CodeSignOption.CertificatePassword); err != nil {
+		return NewSignatureError(err, ErrorCertificateImport)
+	}
+
+	return nil
 }
 
 func (s service) forTarget(
@@ -50,71 +154,11 @@ func (s service) forTarget(
 	if err != nil {
 		return err
 	}
-	// fmt.Printf(" >>> %#v %v\n", sc, err)
 
 	*res = append(*res, api.TargetSignatureConfig{
 		TargetName: t,
 		Config:     sc,
 	})
 
-	/*
-		// Importing the certificate
-		if err := s.API.KeyChainService().ImportCertificate(
-			ctx,
-			sc.Cert.FilePath,
-			s.Config.CodeSignOption.CertificatePassword,
-		); err != nil {
-			return res, err
-		}
-		fmt.Println("Importing")
-
-		// Installing certificate
-		if err := s.installProvisioning(sc.ProvisioningProfile); err != nil {
-			return res, err
-		}
-
-		res = []string{
-			fmt.Sprintf("CODE_SIGN_IDENTITY=%v", sc.Cert.Subject.CommonName),
-			"CODE_SIGN_STYLE=Manual",
-			fmt.Sprintf("DEVELOPMENT_TEAM=%v", sc.ProvisioningProfile.Entitlements.TeamID),
-			fmt.Sprintf("PROVISIONING_PROFILE_SPECIFIER=%v", sc.ProvisioningProfile.UUID),
-		}
-	*/
-
 	return nil
 }
-
-func (s service) Run(ctx context.Context, project api.Project) ([]api.TargetSignatureConfig, error) {
-	var res []api.TargetSignatureConfig
-
-	// Found configuration, installing it into a temporary keychain
-	if err := s.API.KeyChainService().Create(ctx, "dothething"); err != nil {
-		return res, err
-	}
-
-	err := s.forTarget(ctx, s.Config.Target, project, &res)
-	return res, err
-}
-
-/*
-func (s api.TargetSignatureConfig) installProvisioning() error {
-	input, err := ioutil.ReadFile(s.Config.ProvisioningProfile.FilePath)
-	if err != nil {
-		return err
-	}
-
-		// Retrieving the user home directory
-		dir, err := os.UserHomeDir()
-		if err != nil {
-			return err
-		}
-
-		// Formatting the provisioning path
-		fn := fmt.Sprintf("%v/Library/MobileDevice/Provisioning Profiles/%v.mobileprovision",
-			dir,
-			p.UUID)
-
-		// Writing the file
-		return ioutil.WriteFile(fn, input, os.ModePerm)
-}
-*/

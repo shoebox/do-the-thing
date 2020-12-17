@@ -8,7 +8,7 @@ import (
 )
 
 type SignatureService interface {
-	Run(ctx context.Context, pj Project) ([]TargetSignatureConfig, error)
+	Run(ctx context.Context) error
 }
 
 type TargetSignatureConfig struct {
