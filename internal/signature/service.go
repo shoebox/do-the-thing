@@ -45,7 +45,9 @@ func (s service) Run(ctx context.Context) error {
 	}
 
 	for _, e := range res {
-		s.applyTargetConfiguration(ctx, pj, e.TargetName, e.Config)
+		if err := s.applyTargetConfiguration(ctx, pj, e.TargetName, e.Config); err != nil {
+			return err
+		}
 	}
 
 	return err
@@ -59,7 +61,7 @@ func (s service) configureBuildSetting(
 ) error {
 	var err error
 	for key, value := range m {
-		path := fmt.Sprintf("buildSettings:%v", key)
+		path := s.buildSettingsPath(key)
 
 		_, hasKey := cc.BuildSettings[key]
 		if hasKey {
@@ -70,6 +72,10 @@ func (s service) configureBuildSetting(
 	}
 
 	return err
+}
+
+func (s service) buildSettingsPath(key string) string {
+	return fmt.Sprintf("buildSettings:%v", key)
 }
 
 func (a service) applyTargetConfiguration(
@@ -98,16 +104,14 @@ func (a service) applyTargetConfiguration(
 		return NewSignatureError(err, ErrorProvisioningInstall)
 	}
 
-	if err = a.configureBuildSetting(
+	if err = a.configureBuildSettingsOfBuildConfiguration(
 		ctx,
 		bc,
-		map[string]string{
-			KeyDevelopmentTeam:  sc.ProvisioningProfile.Entitlements.TeamID,
-			KeyProfileSpecifier: sc.ProvisioningProfile.UUID,
-			KeySigningIdentity:  sc.Cert.Issuer.CommonName,
-			KeySigningStyle:     ManualSigning,
-		}); err != nil {
-		return err
+		sc.ProvisioningProfile.Entitlements.TeamID,
+		sc.ProvisioningProfile.UUID,
+		sc.Cert.Issuer.CommonName,
+	); err != nil {
+		return NewSignatureError(err, ErrorBuildSettingsConfiguration)
 	}
 
 	if err = a.API.
@@ -117,6 +121,25 @@ func (a service) applyTargetConfiguration(
 	}
 
 	return nil
+}
+
+func (a service) configureBuildSettingsOfBuildConfiguration(
+	ctx context.Context,
+	bc pbx.XCBuildConfiguration,
+	teamID string,
+	UUID string,
+	identity string,
+) error {
+	return a.configureBuildSetting(
+		ctx,
+		bc,
+		map[string]string{
+			KeyDevelopmentTeam:  teamID,
+			KeyProfileSpecifier: UUID,
+			KeySigningIdentity:  identity,
+			KeySigningStyle:     ManualSigning,
+		},
+	)
 }
 
 func (s service) forTarget(
@@ -131,14 +154,10 @@ func (s service) forTarget(
 		return err
 	}
 
-	// Do the native target has native depdendencies
-	for _, dp := range nt.Dependencies {
-		switch dp.ProductType {
-		case pbx.Application, pbx.TvExtension:
-			if err := s.forTarget(ctx, dp.Name, p, res); err != nil {
-				return err
-			}
-		}
+	if err = s.configureDependencies(nt, func(name string) error {
+		return s.forTarget(ctx, name, p, res)
+	}); err != nil {
+		return err
 	}
 
 	// Resolving the build configuration for the target
@@ -159,6 +178,20 @@ func (s service) forTarget(
 		TargetName: t,
 		Config:     sc,
 	})
+
+	return nil
+}
+
+func (s service) configureDependencies(nt pbx.NativeTarget, f func(string) error) error {
+	// Do the native target has native depdendencies
+	for _, dp := range nt.Dependencies {
+		switch dp.ProductType {
+		case pbx.Application, pbx.TvExtension:
+			if err := f(dp.Name); err != nil {
+				return err
+			}
+		}
+	}
 
 	return nil
 }

@@ -23,6 +23,7 @@ type XCodebuildSuite struct {
 
 	mockCmd      *utiltest.MockExecutorCmd
 	mockExecutor *utiltest.MockExecutor
+
 }
 
 func TestXCodebuildSuite(t *testing.T) {

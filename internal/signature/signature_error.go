@@ -4,6 +4,7 @@ import "fmt"
 
 const (
 	ErrorBuildConfigurationResolution  = "Failed to resolve build configuration"
+	ErrorBuildSettingsConfiguration    = "Failed to configure XCBuildConfiguration"
 	ErrorCertificateImport             = "Failed to import certificate"
 	ErrorCertificateResolution         = "Failed to resolve matching certificate"
 	ErrorProvisioningInstall           = "Failed to install provisioining profile"

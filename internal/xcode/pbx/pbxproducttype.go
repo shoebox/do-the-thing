@@ -24,3 +24,26 @@ const (
 	XcodeExtension      PBXProductType = "com.apple.product-type.xcode-extension"
 	XpcService          PBXProductType = "com.apple.product-type.xpc-service"
 )
+
+var ProductTypes = []PBXProductType{
+	AppExtension,
+	Application,
+	Bundle,
+	CommandLineTool,
+	DynamicLibrary,
+	Framework,
+	MessagesApplication,
+	MessagesExtension,
+	OcUnitTestBundle,
+	StaticLibrary,
+	StickerPack,
+	TvExtension,
+	UiTestBundle,
+	UnitTestBundle,
+	Watch2App,
+	Watch2Extension,
+	WatchApp,
+	WatchExtension,
+	XcodeExtension,
+	XpcService,
+}
