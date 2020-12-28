@@ -8,19 +8,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-
-	"golang.org/x/sync/errgroup"
+	"sync"
 )
-
-type FileService interface {
-	OpenAndReadFileContent(abs string) ([]byte, error)
-	Open(path string) (io.ReadCloser, error)
-	IsDir(path string) (bool, error)
-	Walk(ctx context.Context,
-		root string,
-		isValid func(info os.FileInfo) bool,
-		handlePath func(ctx context.Context, path string) error) *errgroup.Group
-}
 
 func NewFileService() IoUtilFileService {
 	return IoUtilFileService{}
@@ -29,54 +18,38 @@ func NewFileService() IoUtilFileService {
 type IoUtilFileService struct {
 }
 
-func (f IoUtilFileService) Walk(ctx context.Context,
+func (f IoUtilFileService) Walk(
+	ctx context.Context,
 	root string,
 	isValid func(info os.FileInfo) bool,
-	handlePath func(ctx context.Context, path string) error) *errgroup.Group {
+	paths chan string,
+	wg *sync.WaitGroup,
+) error {
 
-	// Create an error group for the context
-	g, ctx := errgroup.WithContext(ctx)
+	defer close(paths)
 
-	// Create a channel to host the paths
-	paths := make(chan string)
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error { // HL
+		if err != nil {
+			return err
+		}
 
-	// Iterate on all items contained in the target root path
-	g.Go(func() error {
-		// closing the channel on defer
-		defer close(paths)
-
-		// We walk the root folder files
-		return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-			// Do the file is a certificate file (at first glance at least)
-			if err != nil || !isValid(info) {
-				return nil
-			}
-
-			// Select action for result
-			select {
-			case paths <- path: // Populate the channel with result
-			case <-ctx.Done(): // In case of context cancelation
-				return ctx.Err()
-			}
+		if !isValid(info) {
 			return nil
-		})
+		}
+
+		paths <- path
+
+		return nil
 	})
 
-	// We iterate on all paths contained in the channel
-	for path := range paths {
-		// And launch a goroutine against it
-		g.Go(func() error {
-			return handlePath(ctx, path)
-		})
-	}
-
-	return g
+	return err
 }
 
 func (f IoUtilFileService) Open(path string) (io.ReadCloser, error) {
 	return os.Open(path)
 }
 
+// TODO: Return a reader rather
 func (f IoUtilFileService) OpenAndReadFileContent(abs string) ([]byte, error) {
 	// Open the file content
 	file, err := os.Open(abs)

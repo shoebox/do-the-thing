@@ -2,29 +2,26 @@ package action
 
 import (
 	"context"
-	"dothething/internal/config"
-	"dothething/internal/util"
+	"dothething/internal/api"
 	"dothething/internal/xcode"
+	"fmt"
 
 	"github.com/fatih/color"
 	"github.com/rs/zerolog/log"
 )
 
-type ActionArchive interface {
-	Run(ctx context.Context, config config.Config) error
-}
-
-func NewArchive(xcode xcode.BuildService, exec util.Executor) ActionArchive {
-	return actionArchive{exec, xcode}
+func NewArchive(api api.API, cfg *api.Config) api.Action {
+	return actionArchive{api, cfg}
 }
 
 type actionArchive struct {
-	exec  util.Executor
-	xcode xcode.BuildService
+	api.API
+	*api.Config
 }
 
-func (a actionArchive) Run(ctx context.Context, config config.Config) error {
-	xce := xcode.ParseXCodeBuildError(a.build(ctx, config))
+func (a actionArchive) Run(ctx context.Context) error {
+
+	xce := xcode.ParseXCodeBuildError(a.build(ctx))
 	if xce != nil {
 		color.New(color.FgHiRed, color.Bold).Println(xce.Error())
 	}
@@ -32,13 +29,25 @@ func (a actionArchive) Run(ctx context.Context, config config.Config) error {
 	return xce
 }
 
-func (a actionArchive) build(ctx context.Context, config config.Config) error {
+func (a actionArchive) build(ctx context.Context) error {
 	log.Info().Msg("Archiving")
-	return RunCmd(a.exec.CommandContext(ctx,
-		xcode.Cmd,
-		a.xcode.GetArg(),
-		a.xcode.GetProjectPath(),
+
+	if err := a.API.SignatureService().Run(ctx); err != nil {
+		return err
+	}
+
+	// defer deletion of the keychain
+	defer a.API.KeyChainService().Delete(ctx)
+
+	// The archiving arguments
+	args := []string{
+		a.API.XCodeBuildService().GetArg(),
+		a.API.XCodeBuildService().GetProjectPath(),
 		xcode.ActionArchive,
-		xcode.FlagScheme, config.Scheme,
-		"CODE_SIGNING_ALLOWED=NO"))
+		xcode.FlagScheme, a.Config.Scheme,
+		xcode.FlagConfiguration, a.Config.Configuration,
+		xcode.FlagArchivePath, fmt.Sprintf("%v/archive/toto.xcarchive", a.Config.Path),
+	}
+
+	return RunCmd(a.API.Exec().CommandContext(ctx, xcode.Cmd, args...))
 }

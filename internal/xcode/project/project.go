@@ -3,9 +3,8 @@ package project
 import (
 	"bytes"
 	"context"
-	"dothething/internal/config"
+	"dothething/internal/api"
 	"dothething/internal/util"
-	"dothething/internal/xcode"
 	"dothething/internal/xcode/pbx"
 	"encoding/json"
 	"errors"
@@ -17,8 +16,6 @@ var (
 	ErrInvalidConfig = errors.New("Invalid xcodedbuild list response")
 )
 
-type ReadFile func(path string) ([]byte, error)
-
 // Project datas
 type Project struct {
 	Configurations []string `json:"configurations"`
@@ -28,7 +25,7 @@ type Project struct {
 	Targets        []string `json:"targets"`
 }
 
-func (p Project) ValidateConfiguration(c config.Config) error {
+func (p Project) ValidateConfiguration(c api.Config) error {
 	found := false
 	for _, s := range p.Schemes {
 		if s == c.Scheme {
@@ -44,41 +41,35 @@ func (p Project) ValidateConfiguration(c config.Config) error {
 	return nil
 }
 
-// ProjectService interface
-type ProjectService interface {
-	Parse(ctx context.Context) (Project, error)
-}
-
 // projectService struct definition
 type projectService struct {
-	reader       ReadFile
-	xcodeService xcode.BuildService
-	exec         util.Executor
+	api.API
 }
 
 type list struct {
-	Project   Project `json:"project"`
-	Workspace Project `json:"workspace"`
+	Project   api.Project `json:"project"`
+	Workspace api.Project `json:"workspace"`
 }
 
 // NewProjectService Create a new instance of the PBXProj service
-func NewProjectService(r ReadFile, bs xcode.BuildService, e util.Executor) ProjectService {
-	return projectService{r, bs, e}
+func NewProjectService(api api.API) api.ProjectService {
+	return projectService{api}
 }
 
 // Parse the PBXProj raw project into a more friendly version
-func (s projectService) Parse(ctx context.Context) (Project, error) {
-	project, err := s.resolveProject(ctx)
+func (s projectService) Parse(ctx context.Context) (api.Project, error) {
+	var res api.Project
+	res, err := s.resolveProject(ctx)
 	if err != nil {
-		return Project{}, err
+		return res, err
 	}
 
-	project.Pbx, err = s.resolvePbx()
+	res.Pbx, err = s.resolvePbx()
 	if err != nil {
-		return Project{}, err
+		return res, err
 	}
 
-	return project, nil
+	return res, nil
 }
 
 func (s projectService) resolvePbx() (pbx.PBXProject, error) {
@@ -102,16 +93,16 @@ func (s projectService) decodeProject(b []byte) (pbx.PBXProject, error) {
 }
 
 func (s projectService) resolvePbxProj() ([]byte, error) {
-	path, err := filepath.Abs(s.xcodeService.GetProjectPath() + "/project.pbxproj")
+	path, err := filepath.Abs(s.API.XCodeBuildService().GetProjectPath() + "/project.pbxproj")
 	if err != nil {
 		return []byte{}, err
 	}
 
-	return s.reader(path)
+	return s.API.FileService().OpenAndReadFileContent(path)
 }
 
-func (s projectService) resolveProject(ctx context.Context) (Project, error) {
-	var project Project
+func (s projectService) resolveProject(ctx context.Context) (api.Project, error) {
+	var project api.Project
 
 	// Execute the list call to xcodebuild
 	data, err := s.xCodeCall(ctx)
@@ -134,7 +125,7 @@ func (s projectService) resolveProject(ctx context.Context) (Project, error) {
 }
 
 func (s projectService) xCodeCall(ctx context.Context) ([]byte, error) {
-	str, err := s.xcodeService.List(ctx)
+	str, err := s.API.XCodeBuildService().List(ctx)
 	if err != nil {
 		return nil, err
 	}

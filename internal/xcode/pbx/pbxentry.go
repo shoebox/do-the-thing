@@ -2,6 +2,7 @@ package pbx
 
 type Entry struct {
 	Ref string `plist:"reference"`
+
 	// Common
 	FileRef string `plist:"fileRef"`
 	Isa     string `plist:"isa"`
@@ -19,7 +20,7 @@ type Entry struct {
 	SourceTree        string `plist:"sourceTree"`
 
 	// PBXFrameworksBuildPhase
-	BuildActionMask int      `plist:"buildActionMask"`
+	BuildActionMask string `plist:"buildActionMask"`
 	Files           []string `plist:"files"`
 
 	// PBXGroup
@@ -82,7 +83,9 @@ type ArrayRef []Ref
 func (a ArrayRef) GetList(p PBXProjRaw) []Entry {
 	var res []Entry
 	for _, ref := range a {
-		res = append(res, ref.Get(p))
+		d := ref.Get(p)
+		d.Ref = string(ref)
+		res = append(res, d)
 	}
 
 	return res

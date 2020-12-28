@@ -2,25 +2,24 @@ package util
 
 import (
 	"context"
-	"fmt"
+	"dothething/internal/api"
 	"os/exec"
-)
 
-// Executor command helper base interface
-type Executor interface {
-	// CommandContext allow to execute a command with Context
-	CommandContext(ctx context.Context, cmd string, args ...string) Cmd
-}
+	"github.com/rs/zerolog/log"
+)
 
 type executor struct{}
 
 // NewExecutor create a new instance of the implemented Cmd interface
-func NewExecutor() Executor {
+func NewExecutor() api.Executor {
 	return &executor{}
 }
 
 // CommandContext run a command with context
-func (executor *executor) CommandContext(ctx context.Context, cmd string, args ...string) Cmd {
-	fmt.Println(cmd, args)
+func (executor *executor) CommandContext(ctx context.Context, cmd string, args ...string) api.Cmd {
+	log.Debug().
+		Str("Cmd", cmd).
+		Strs("Args", args).
+		Msg("Running command with context")
 	return (*cmdWrapper)(exec.CommandContext(ctx, cmd, args...))
 }

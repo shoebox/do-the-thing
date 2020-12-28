@@ -13,7 +13,7 @@ install:
   - go get -v -t ./...
 
 script:
-  - go test ./... -coverprofile=coverage.txt -covermode=atomic
+  - go test ./... -tags mock -coverprofile=coverage.txt -covermode=atomic
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

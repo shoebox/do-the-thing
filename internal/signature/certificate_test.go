@@ -15,7 +15,7 @@ var cs certService
 
 func Main(m *testing.M) {
 	fs = new(utiltest.MockFileService)
-	cs = certService{fs: fs}
+	// cs = certService{fs: fs}
 
 	os.Exit(m.Run())
 }
@@ -23,32 +23,32 @@ func Main(m *testing.M) {
 func TestIsCertFile(t *testing.T) {
 	// setup:
 	cases := []struct {
-		fi    mockedFileInfo
+		fi    utiltest.MockFileInfo
 		name  string
 		valid bool
 	}{
 		{
-			fi:    mockedFileInfo{fileMode: 0, isDir: false, name: ""},
+			fi:    utiltest.NewMockFileInfo(0, false, ""),
 			name:  "Invalid file mode",
 			valid: false,
 		},
 		{
-			fi:    mockedFileInfo{fileMode: os.ModeAppend, isDir: true, name: "toto.p12"},
+			fi:    utiltest.NewMockFileInfo(os.ModeAppend, true, "toto.p12"),
 			name:  "Should not be a directory",
 			valid: false,
 		},
 		{
-			fi:    mockedFileInfo{fileMode: os.ModeAppend, isDir: false, name: "toto.p12"},
+			fi:    utiltest.NewMockFileInfo(os.ModeAppend, false, "toto.p12"),
 			name:  "Valid mode",
 			valid: true,
 		},
 		{
-			fi:    mockedFileInfo{fileMode: os.ModeAppend, isDir: false, name: "toto.prov"},
+			fi:    utiltest.NewMockFileInfo(os.ModeAppend, false, "toto.prov"),
 			name:  "Should have the right extension",
 			valid: false,
 		},
 		{
-			fi:    mockedFileInfo{fileMode: os.ModeIrregular, isDir: false, name: "toto.p12"},
+			fi:    utiltest.NewMockFileInfo(os.ModeIrregular, false, "toto.p12"),
 			name:  "Should be regular mode",
 			valid: false,
 		},

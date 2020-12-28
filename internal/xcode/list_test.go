@@ -1,18 +1,17 @@
 package xcode
 
 import (
-	"context"
-	"errors"
+	"bytes"
 	"fmt"
 	"testing"
 
-	"dothething/internal/utiltest"
+	"dothething/internal/api"
+	"dothething/internal/util"
 
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
-var install = Install{
+var install = api.Install{
 	Path:          "/Applications/Xcode.app",
 	BundleVersion: "1.2.3",
 	Version:       "1.2.3-snapshot",
@@ -20,20 +19,26 @@ var install = Install{
 
 type XCodeListTestSuite struct {
 	suite.Suite
-	ctx             context.Context
-	cmd             *utiltest.MockExecutorCmd
-	mockExec        *utiltest.MockExecutor
-	mockFileService *utiltest.MockFileService
-	service         listService
+	/*
+		ctx             context.Context
+		cmd             *utiltest.MockExecutorCmd
+		mockExec        *utiltest.MockExecutor
+		mockFileService *utiltest.MockFileService
+		service         listService
+	*/
+	*listService
 }
 
 func (s *XCodeListTestSuite) SetupTest() {
-	utiltest.SetupMockExec()
-	s.cmd = new(utiltest.MockExecutorCmd)
-	s.ctx = context.Background()
-	s.mockExec = new(utiltest.MockExecutor)
-	s.mockFileService = new(utiltest.MockFileService)
-	s.service = listService{exec: s.mockExec, file: s.mockFileService}
+	s.listService = new(listService)
+	/*
+		utiltest.SetupMockExec()
+		s.cmd = new(utiltest.MockExecutorCmd)
+		s.ctx = context.Background()
+		s.mockExec = new(utiltest.MockExecutor)
+		s.mockFileService = new(utiltest.MockFileService)
+		s.service = listService{exec: s.mockExec, file: s.mockFileService}
+	*/
 }
 
 func xcodeContentPListFile(version string) string {
@@ -53,220 +58,39 @@ func TestXCodeListTestSuite(t *testing.T) {
 	suite.Run(t, new(XCodeListTestSuite))
 }
 
-func (s *XCodeListTestSuite) TestOpenFileContent() {
-	// setup:
-	s.mockReturn(
-		MdFind,
-		[]string{BundleIdentifier},
-		"Hello world",
-		nil,
-	)
-
-	// when:
-	wb, _ := s.service.spotlightSearch(s.ctx)
-
-	// then:
-	s.Assert().NotNil(wb)
-
-	// and:
-	s.mockExec.AssertExpectations(s.T())
-}
-
-func (s *XCodeListTestSuite) mockReturn(cmd string, arg []string, res string, err error) {
-	s.cmd.
-		On("Output").
-		Return(res, err)
-
-	s.mockExec.
-		On("CommandContext",
-			mock.Anything,
-			MdFind, []string{BundleIdentifier}).
-		Return(s.cmd)
-}
-
-func (s *XCodeListTestSuite) TestSpotLightFailure() {
-	s.mockReturn(
-		MdFind,
-		[]string{BundleIdentifier},
-		"",
-		fmt.Errorf("Error"),
-	)
-
-	res, err := s.service.List(s.ctx)
-
-	s.Assert().Error(err)
-	s.Assert().Nil(res)
-}
-
-func (s *XCodeListTestSuite) TestShouldBeAbleToResolveTheInstall() {
-	s.mockFileService.
-		On("OpenAndReadFileContent", fmt.Sprintf("%v%v", install.Path, ContentPListFile)).
-		Return(xcodeContentPListFile("1.2.3"), nil)
-
-	xc, err := s.service.resolveXcode(fmt.Sprintf(install.Path))
-
-	s.Assert().Nil(err)
-	s.Assert().EqualValues(xc, &install)
-
-	s.mockExec.AssertExpectations(s.T())
-}
-
-func (s *XCodeListTestSuite) TesTshouldFailToResolveInvalidPath() {
-	s.mockFileService.
-		On("OpenAndReadFileContent", fmt.Sprintf("%v%v", install.Path, ContentPListFile)).
-		Return(nil, fmt.Errorf("Error sample"))
-
-	xc, err := s.service.resolveXcode(fmt.Sprintf(install.Path))
-
-	s.Assert().NotNil(err)
-	s.Assert().Nil(xc)
-}
-
-func (s *XCodeListTestSuite) TestResolveXcodeDecodingErrorsHandling() {
-	s.mockFileService.
-		On("OpenAndReadFileContent", fmt.Sprintf("%v%v", install.Path, ContentPListFile)).
-		Return("invalid", nil)
-
-	xc, err := s.service.resolveXcode(fmt.Sprintf(install.Path))
-	s.Assert().Nil(xc)
-	s.Assert().EqualError(err, "plist: type mismatch: tried to decode plist type `string' into value of type `xcode.infoPlist'")
-}
-
-func (s *XCodeListTestSuite) TestParseSpotLightSearchResults() {
-	// setup:
-	s.cmd.
-		On("Output").
-		Return("result", errors.New("toto"))
-
-	s.mockExec.On("CommandContext",
-		mock.Anything,
-		MdFind,
-		[]string{BundleIdentifier}).Return(s.cmd)
-
-	// when:
+func (s *XCodeListTestSuite) TestResolveInstall() {
 	cases := []struct {
-		path    string
-		valid   bool
-		version string
+		i *api.Install
+		p string
+		e error
+		c string
 	}{
-		{path: "/Applications/Xcode.app", valid: true, version: "13.1.1"},
-		{path: "/Applications/Xcode-10.3.1.app", valid: true, version: "10.3.1"},
-		{path: "/invalid/path", valid: false},
+		{
+			i: &api.Install{
+				Path:          "/path/to/project.xcodeproj",
+				BundleVersion: "10.0.1",
+				Version:       "10.0.1-snapshot",
+			},
+			p: "/path/to/project.xcodeproj",
+			c: xcodeContentPListFile("10.0.1"),
+		},
+		{
+			i: nil,
+			c: "toto",
+			e: util.DecodingError{},
+		},
 	}
 
-	// when:
 	for _, c := range cases {
-		b := s.mockFileService.
-			On("OpenAndReadFileContent", fmt.Sprintf("%v%v", c.path, ContentPListFile))
+		s.Run(c.c, func() {
+			// when:
+			i, e := s.listService.resolveInstall(c.p, bytes.NewReader([]byte(c.c)))
 
-		if c.valid {
-			b.Return(xcodeContentPListFile(c.version), nil)
-		} else {
-			b.Return(nil, errors.New("error text"))
-		}
+			// then:
+			s.Assert().EqualValues(c.i, i)
+
+			//
+			s.Assert().Equal(c.e, e)
+		})
 	}
-
-	// then:
-	for _, c := range cases {
-		i, err := s.service.resolveXcode(c.path)
-
-		if c.valid {
-			s.Assert().EqualValues(i, &Install{
-				Path:          c.path,
-				BundleVersion: c.version,
-				Version:       fmt.Sprintf("%v-snapshot", c.version),
-			})
-		} else {
-			s.Assert().EqualError(err, "error text")
-		}
-	}
-}
-
-func (s *XCodeListTestSuite) TestParseSpotLightEntryShouldHandleError() {
-	// setup:
-	s.mockFileService.On("IsDir", "/toto/tata.app").Return(nil, errors.New("toto"))
-
-	// when:
-	_, err := s.service.parseSpotlightEntry("/toto/tata.app")
-
-	// then:
-	s.Assert().EqualError(err, "toto")
-}
-
-func (s *XCodeListTestSuite) TestParseSpotLightEntryShouldParseResult() {
-	version := "10.3.1"
-	path := "/Applications/Xcode-10.3.1.app"
-
-	// setup:
-	s.mockFileService.On("IsDir", path).
-		Return(true, nil)
-
-	s.mockFileService.
-		On("OpenAndReadFileContent", fmt.Sprintf("%v%v", path, ContentPListFile)).
-		Return(xcodeContentPListFile("10.3.1"), nil)
-
-	// when:
-	i, err := s.service.parseSpotlightEntry(path)
-
-	// then:
-	s.Assert().EqualValues(&Install{
-		Path:          path,
-		BundleVersion: version,
-		Version:       fmt.Sprintf("%v-snapshot", version),
-	}, i)
-	s.Assert().NoError(err)
-}
-
-func (s *XCodeListTestSuite) TestListShouldHandleError() {
-	// setup:
-	s.cmd.
-		On("Output").
-		Return("result", errors.New("toto"))
-
-	s.mockExec.On("CommandContext",
-		mock.Anything,
-		MdFind,
-		[]string{BundleIdentifier}).Return(s.cmd)
-
-	// when:
-	installs, err := s.service.List(s.ctx)
-
-	// then:
-	s.Assert().EqualError(err, "toto")
-	s.Assert().Empty(installs)
-}
-
-func (s XCodeListTestSuite) TestListShouldParseResults() {
-	// setup:
-	path := "/Applications/Xcode-10.3.1.app"
-	version := "10.3.1"
-
-	// setup:
-	s.mockFileService.On("IsDir", path).
-		Return(true, nil)
-
-	s.mockFileService.
-		On("OpenAndReadFileContent", fmt.Sprintf("%v%v", path, ContentPListFile)).
-		Return(xcodeContentPListFile("10.3.1"), nil)
-
-	s.cmd.
-		On("Output").
-		Return(path, nil)
-
-	s.mockExec.On("CommandContext",
-		mock.Anything,
-		MdFind,
-		[]string{BundleIdentifier}).Return(s.cmd)
-
-	// when:
-	installs, err := s.service.List(s.ctx)
-
-	// then:
-	s.Assert().NoError(err)
-	s.Assert().EqualValues([]*Install{{
-		Path:          path,
-		BundleVersion: version,
-		Version:       fmt.Sprintf("%v-snapshot", version),
-	}}, installs)
-	s.Assert().NoError(err)
 }

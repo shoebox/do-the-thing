@@ -1,6 +1,15 @@
-package util
+package api
 
-import "io"
+import (
+	"context"
+	"io"
+)
+
+// Executor command helper base interface
+type Executor interface {
+	// CommandContext allow to execute a command with Context
+	CommandContext(ctx context.Context, cmd string, args ...string) Cmd
+}
 
 // Cmd is an interface that wrap the Cmd action from os/exec in a more friendly API
 type Cmd interface {
@@ -37,3 +46,4 @@ type Cmd interface {
 	// terminate after 10 seconds.
 	Stop()
 }
+

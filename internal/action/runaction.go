@@ -1,11 +1,11 @@
 package action
 
 import (
-	"dothething/internal/util"
+	"dothething/internal/api"
 	"dothething/internal/xcode/output"
 )
 
-func RunCmd(cmd util.Cmd) error {
+func RunCmd(cmd api.Cmd) error {
 	pout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
