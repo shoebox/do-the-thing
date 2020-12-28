@@ -87,15 +87,18 @@ func (s listService) resolveXcode(path string) (*api.Install, error) {
 		return nil, err
 	}
 
-	info := infoPlist{}
-
 	// Read the file content
 	fb, err := s.API.FileService().OpenAndReadFileContent(abs)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = util.DecodeFile(bytes.NewReader(fb), &info); err != nil {
+	return s.resolveInstall(path, bytes.NewReader(fb))
+}
+
+func (s listService) resolveInstall(path string, r io.ReadSeeker) (*api.Install, error) {
+	var info infoPlist
+	if err := util.DecodeFile(r, &info); err != nil {
 		return nil, err
 	}
 

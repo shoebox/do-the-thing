@@ -49,6 +49,7 @@ func (f IoUtilFileService) Open(path string) (io.ReadCloser, error) {
 	return os.Open(path)
 }
 
+// TODO: Return a reader rather
 func (f IoUtilFileService) OpenAndReadFileContent(abs string) ([]byte, error) {
 	// Open the file content
 	file, err := os.Open(abs)
