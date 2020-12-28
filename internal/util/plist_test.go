@@ -33,7 +33,7 @@ func TestDecoding(t *testing.T) {
 		err := DecodeFile(bytes.NewReader([]byte("invalid")), data)
 		fmt.Println("err ", err)
 
-		assert.EqualError(t, err, "plist: type mismatch: tried to decode plist type `string' into value of type `util.test'")
+		assert.EqualError(t, err, DecodingError{}.Error())
 	})
 
 	t.Run("Should decode valid payload without issue", func(t *testing.T) {
