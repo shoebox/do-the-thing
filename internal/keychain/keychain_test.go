@@ -24,15 +24,9 @@ var (
 type keychainTestSuite struct {
 	suite.Suite
 	API     *api.APIMock
+	pm      *api.PathMock
 	exec    *utiltest.MockExecutor
 	subject keychain
-	/*
-		ctx    context.Context
-		cancel context.CancelFunc
-		cmd    *utiltest.MockExecutorCmd
-		subject  keychain
-		executor *utiltest.MockExecutor
-	*/
 }
 
 func TestKeychainSuite(t *testing.T) {
@@ -42,23 +36,28 @@ func TestKeychainSuite(t *testing.T) {
 func (s *keychainTestSuite) BeforeTest(suiteName, testName string) {
 	s.exec = new(utiltest.MockExecutor)
 	s.API = new(api.APIMock)
+	s.pm = new(api.PathMock)
 	s.API.On("Exec").Return(s.exec)
+	s.API.On("PathService").Return(s.pm)
 	s.subject = keychain{API: s.API}
-	//s.executor = new(utiltest.MockExecutor)
-	//s.cmd = new(utiltest.MockExecutorCmd)
-	// s.subject = keychain{s.executor, "/path/to/file.keychain"}
-	//s.ctx, s.cancel = context.WithTimeout(context.Background(), 60*time.Second)
 }
 
 func (s *keychainTestSuite) AfterTest(suiteName, testName string) {
 }
 
 func (s *keychainTestSuite) TestNewKeychain() {
+	// setup:
+	p := "/path/to/k.keychain"
+	s.pm.On("KeyChain").Return(p)
+
 	// when:
-	_, err := NewKeyChain(s.API)
+	k, err := NewKeyChain(s.API)
 
 	// then:
 	s.Assert().NoError(err)
+
+	// and:
+	s.Assert().Equal(k.GetPath(), p)
 }
 
 func (s *keychainTestSuite) TestCreateShouldHandleErrors() {

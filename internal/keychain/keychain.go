@@ -43,8 +43,7 @@ func (k keychain) GetPath() string {
 	return k.filePath
 }
 
-// Create will create a new temporary keychhain and add it to the
-// search list
+// Create will create a new temporary keychhain and add it to the search list
 func (k keychain) Create(ctx context.Context, password string) error {
 	if err := k.createKeychain(ctx, password); err != nil {
 		return err
