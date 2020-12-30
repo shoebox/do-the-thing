@@ -3,11 +3,11 @@ package action
 import (
 	"context"
 	"dothething/internal/api"
-	"dothething/internal/util"
 	"dothething/internal/xcode"
 	"fmt"
 
 	"github.com/fatih/color"
+	"github.com/rs/zerolog/log"
 )
 
 type actionRunTest struct {
@@ -20,13 +20,19 @@ func NewActionRun(api api.API, cfg *api.Config) api.Action {
 }
 
 func (a actionRunTest) Run(ctx context.Context) error {
-	// Creating a temp folder to contains the test results
-	path, err := util.TempFileName("dothething", ".xcresult")
-	if err != nil {
+	log.Info().Msg("Running unit tests")
+
+	if err := a.API.SignatureService().Run(ctx); err != nil {
 		return err
 	}
 
-	xce := xcode.ParseXCodeBuildError(a.runXCodebuildTest(ctx, path))
+	// defer deletion of the keychain
+	defer a.API.KeyChainService().Delete(ctx)
+
+	// Creating a temp folder to contains the test results
+	outputPath := a.API.PathService().XCResult()
+
+	xce := xcode.ParseXCodeBuildError(a.runXCodebuildTest(ctx, outputPath))
 	if xce != nil {
 		color.New(color.FgHiRed, color.Bold).Println(xce.Error())
 	}

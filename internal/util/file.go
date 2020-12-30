@@ -70,12 +70,21 @@ func (f IoUtilFileService) IsDir(path string) (bool, error) {
 	return stat.IsDir(), nil
 }
 
-// TempFileName Generate a temporary file path
-func TempFileName(prefix, suffix string) (string, error) {
+// TempFilePath Generate a temporary file path
+func TempFilePath(prefix, suffix string) (string, error) {
+	p, err := RandomFileName(prefix, suffix)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(os.TempDir(), p), nil
+}
+
+func RandomFileName(prefix, suffix string) (string, error) {
 	randBytes := make([]byte, 16)
 	if _, err := rand.Read(randBytes); err != nil {
 		return "", err
 	}
 
-	return filepath.Join(os.TempDir(), prefix+hex.EncodeToString(randBytes)+suffix), nil
+	return hex.EncodeToString(randBytes) + suffix, nil
 }

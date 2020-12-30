@@ -18,10 +18,12 @@ type API interface {
 	ActionBuild() Action
 	ActionRunTest() Action
 	CertificateService() CertificateService
+	Config() *Config
 	DestinationService() DestinationService
 	Exec() Executor
 	FileService() FileService
 	KeyChainService() KeyChain
+	PathService() PathService
 	PListBuddyService() PListBuddyService
 	ProvisioningService() ProvisioningService
 	SignatureResolver() SignatureResolver

@@ -31,6 +31,7 @@ func (m menu) Run() error {
 	app.Commands = []*cli.Command{
 		{Name: "build", Action: m.buildCommand},
 		{Name: "archive", Action: m.archiveCommand},
+		{Name: "test", Action: m.testCommand},
 	}
 
 	app.Flags = []cli.Flag{
@@ -56,6 +57,10 @@ func (m menu) archiveCommand(c *cli.Context) error {
 
 func (m menu) buildCommand(c *cli.Context) error {
 	return m.runAction(m.API.ActionBuild())
+}
+
+func (m menu) testCommand(c *cli.Context) error {
+	return m.runAction(m.API.ActionRunTest())
 }
 
 func (m menu) runAction(action api.Action) error {
