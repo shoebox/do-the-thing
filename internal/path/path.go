@@ -23,7 +23,10 @@ func (p pathService) buildFolder() string {
 func (p pathService) Archive() string {
 	return filepath.Clean(filepath.Join(
 		p.buildFolder(),
-		fmt.Sprintf("%v-%v.xcarchive", p.API.Config().Scheme, p.API.Config().Configuration),
+		fmt.Sprintf("%v-%v-%v.xcarchive",
+			p.API.Config().Target,
+			p.API.Config().Scheme,
+			p.API.Config().Configuration),
 	))
 }
 
@@ -42,6 +45,10 @@ func (p pathService) SymRoot() string {
 func (p pathService) XCResult() string {
 	return filepath.Join(
 		p.buildFolder(),
-		fmt.Sprintf("%v-%v.xcresult", p.API.Config().Scheme, p.API.Config().Configuration),
+		fmt.Sprintf("%v-%v-%v.xcresult",
+			p.API.Config().Target,
+			p.API.Config().Scheme,
+			p.API.Config().Configuration,
+		),
 	)
 }
