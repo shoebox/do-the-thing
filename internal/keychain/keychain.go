@@ -6,8 +6,6 @@ import (
 	"context"
 	"dothething/internal/api"
 	"errors"
-	"io/ioutil"
-	"path/filepath"
 	"regexp"
 
 	"github.com/rs/zerolog/log"
@@ -38,23 +36,14 @@ type keychain struct {
 }
 
 func NewKeyChain(api api.API) (api.KeyChain, error) {
-	tmpDir, err := ioutil.TempDir("", "do-the-thing-*")
-	if err != nil {
-		return nil, KeyChainError{msg: fileError, err: err}
-	}
-
-	return keychain{
-		API:      api,
-		filePath: filepath.Join(tmpDir, "do-the-thing.keychain"),
-	}, nil
+	return keychain{API: api, filePath: api.PathService().KeyChain()}, nil
 }
 
 func (k keychain) GetPath() string {
 	return k.filePath
 }
 
-// Create will create a new temporary keychhain and add it to the
-// search list
+// Create will create a new temporary keychhain and add it to the search list
 func (k keychain) Create(ctx context.Context, password string) error {
 	if err := k.createKeychain(ctx, password); err != nil {
 		return err

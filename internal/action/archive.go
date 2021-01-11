@@ -4,7 +4,6 @@ import (
 	"context"
 	"dothething/internal/api"
 	"dothething/internal/xcode"
-	"fmt"
 
 	"github.com/fatih/color"
 	"github.com/rs/zerolog/log"
@@ -46,7 +45,9 @@ func (a actionArchive) build(ctx context.Context) error {
 		xcode.ActionArchive,
 		xcode.FlagScheme, a.Config.Scheme,
 		xcode.FlagConfiguration, a.Config.Configuration,
-		xcode.FlagArchivePath, fmt.Sprintf("%v/archive/toto.xcarchive", a.Config.Path),
+		xcode.FlagArchivePath, a.API.PathService().Archive(),
+		a.API.PathService().ObjRoot(),
+		a.API.PathService().SymRoot(),
 	}
 
 	return RunCmd(a.API.Exec().CommandContext(ctx, xcode.Cmd, args...))

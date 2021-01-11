@@ -30,6 +30,11 @@ func (m *APIMock) CertificateService() CertificateService {
 	return a.Get(0).(CertificateService)
 }
 
+func (m *APIMock) Config() *Config {
+	a := m.Called()
+	return a.Get(0).(*Config)
+}
+
 func (m *APIMock) DestinationService() DestinationService {
 	a := m.Called()
 	return a.Get(0).(DestinationService)
@@ -38,6 +43,11 @@ func (m *APIMock) DestinationService() DestinationService {
 func (m *APIMock) Exec() Executor {
 	a := m.Called()
 	return a.Get(0).(Executor)
+}
+
+func (m *APIMock) PathService() PathService {
+	a := m.Called()
+	return a.Get(0).(PathService)
 }
 
 func (m *APIMock) FileService() FileService {
