@@ -23,18 +23,18 @@ type selectSuite struct {
 	suite.Suite
 	subject selectService
 	ls      *mockListService
-	API     *api.APIMock
+	API     *api.API
 }
 
 func (s *selectSuite) SetupTest() {
 	s.ls = new(mockListService)
-	s.API = new(api.APIMock)
+	s.API = &api.API{
+		XcodeListService: s.ls,
+	}
 
 	//
 	s.subject = selectService{API: s.API}
 	s.subject.API = s.API
-
-	s.API.On("XCodeListService").Return(s.ls)
 }
 
 // In order for 'go test' to run this suite, we need to create

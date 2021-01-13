@@ -22,13 +22,12 @@ var (
 
 // CertificateService service interface definition
 type certService struct {
-	api.API
-	*api.Config
+	*api.API
 }
 
 // NewCertificateService create a new instance of the certificate service
-func NewCertificateService(api api.API, cfg *api.Config) api.CertificateService {
-	return certService{api, cfg}
+func NewCertificateService(api *api.API) api.CertificateService {
+	return certService{api}
 }
 
 // DecDecodeCertificate allow to validate/decode the content of the io.Reader into a P12Certificate
@@ -81,7 +80,7 @@ func isCertificateFile(info os.FileInfo) bool {
 
 func (xs certService) readCertificateFile(path string) (*api.P12Certificate, error) {
 	// Open the file content to a reader
-	f, err := xs.API.FileService().Open(path)
+	f, err := xs.API.FileService.Open(path)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +122,7 @@ func (xs certService) ResolveInFolder(ctx context.Context, root string) []*api.P
 		go xs.worker(&wg, paths, &res)
 	}
 
-	err := xs.API.FileService().Walk(ctx, root, isCertificateFile, paths, &wg)
+	err := xs.API.FileService.Walk(ctx, root, isCertificateFile, paths, &wg)
 	if err != nil {
 		fmt.Println("err", err)
 	}

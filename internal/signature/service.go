@@ -17,34 +17,38 @@ const (
 	ManualSigning       = "Manual"
 )
 
-type service struct {
-	api.API
-	*api.Config
+func NewSignatureService(api *api.API) signatureService {
+	return signatureService{API: api}
 }
 
-func New(api api.API, cfg *api.Config) api.SignatureService {
-	return service{api, cfg}
+type signatureService struct {
+	*api.API
 }
 
-func (s service) Run(ctx context.Context) error {
-	var res []api.TargetSignatureConfig
+var cfg []api.TargetSignatureConfig
 
+func (s signatureService) GetConfiguration() *[]api.TargetSignatureConfig {
+	return &cfg
+}
+
+func (s signatureService) Run(ctx context.Context) error {
+	log.Info().Msg("Resolving signature configuration")
 	// Parsing project
-	pj, err := s.API.XCodeProjectService().Parse(ctx)
+	pj, err := s.API.XCodeProjectService.Parse(ctx)
 	if err != nil {
 		return err
 	}
 
 	// Found configuration, installing it into a temporary keychain
-	if err := s.API.KeyChainService().Create(ctx, "dothething"); err != nil {
+	if err := s.API.KeyChain.Create(ctx, "dothething"); err != nil {
 		return err
 	}
 
-	if err = s.forTarget(ctx, s.Config.Target, pj, &res); err != nil {
+	if err = s.forTarget(ctx, s.API.Config.Target, pj); err != nil {
 		return err
 	}
 
-	for _, e := range res {
+	for _, e := range cfg {
 		if err := s.applyTargetConfiguration(ctx, pj, e.TargetName, e.Config); err != nil {
 			return err
 		}
@@ -54,7 +58,7 @@ func (s service) Run(ctx context.Context) error {
 }
 
 // configureBuildSetting will apply the build settings for the XCBuildConfiguration
-func (s service) configureBuildSetting(
+func (s signatureService) configureBuildSetting(
 	ctx context.Context,
 	cc pbx.XCBuildConfiguration,
 	m map[string]string,
@@ -65,26 +69,26 @@ func (s service) configureBuildSetting(
 
 		_, hasKey := cc.BuildSettings[key]
 		if hasKey {
-			err = s.API.PListBuddyService().SetStringValue(ctx, cc.Reference, path, value)
+			err = s.API.PlistBuddyService.SetStringValue(ctx, cc.Reference, path, value)
 		} else {
-			err = s.API.PListBuddyService().AddStringValue(ctx, cc.Reference, path, value)
+			err = s.API.PlistBuddyService.AddStringValue(ctx, cc.Reference, path, value)
 		}
 	}
 
 	return err
 }
 
-func (s service) buildSettingsPath(key string) string {
+func (s signatureService) buildSettingsPath(key string) string {
 	return fmt.Sprintf("buildSettings:%v", key)
 }
 
-func (a service) applyTargetConfiguration(
+func (a signatureService) applyTargetConfiguration(
 	ctx context.Context,
 	pj api.Project,
 	targetName string,
 	sc *api.SignatureConfiguration,
 ) error {
-	log.Debug().Str("Target", targetName).Msg("Configure target")
+	log.Info().Str("Target", targetName).Msg("Configuring target")
 
 	// resolve target
 	tgt, err := pj.Pbx.FindTargetByName(targetName)
@@ -93,13 +97,13 @@ func (a service) applyTargetConfiguration(
 	}
 
 	// resolve configuration
-	bc, err := tgt.BuildConfigurationList.FindConfiguration(a.Configuration)
+	bc, err := tgt.BuildConfigurationList.FindConfiguration(a.API.Config.Configuration)
 	if err != nil {
 		return NewSignatureError(err, ErrorBuildConfigurationResolution)
 	}
 
 	// installing provisioning profile
-	err = a.API.ProvisioningService().Install(sc.ProvisioningProfile)
+	err = a.API.ProvisioningService.Install(sc.ProvisioningProfile)
 	if err != nil {
 		return NewSignatureError(err, ErrorProvisioningInstall)
 	}
@@ -114,22 +118,29 @@ func (a service) applyTargetConfiguration(
 		return NewSignatureError(err, ErrorBuildSettingsConfiguration)
 	}
 
-	if err = a.API.
-		KeyChainService().
-		ImportCertificate(ctx, sc.Cert.FilePath, a.CodeSignOption.CertificatePassword); err != nil {
+	if err = a.API.KeyChain.ImportCertificate(
+		ctx,
+		sc.Cert.FilePath,
+		a.API.Config.CodeSignOption.CertificatePassword,
+	); err != nil {
 		return NewSignatureError(err, ErrorCertificateImport)
 	}
 
 	return nil
 }
 
-func (a service) configureBuildSettingsOfBuildConfiguration(
+func (a signatureService) configureBuildSettingsOfBuildConfiguration(
 	ctx context.Context,
 	bc pbx.XCBuildConfiguration,
 	teamID string,
 	UUID string,
 	identity string,
 ) error {
+	log.Info().
+		Str("TeamID", teamID).
+		Str("UUD", UUID).
+		Str("Identity", identity).
+		Msg("Configuring build settingd")
 	return a.configureBuildSetting(
 		ctx,
 		bc,
@@ -142,11 +153,10 @@ func (a service) configureBuildSettingsOfBuildConfiguration(
 	)
 }
 
-func (s service) forTarget(
+func (s signatureService) forTarget(
 	ctx context.Context,
 	t string,
 	p api.Project,
-	res *[]api.TargetSignatureConfig,
 ) error {
 	// Resolving target by name
 	nt, err := p.Pbx.FindTargetByName(t)
@@ -155,26 +165,26 @@ func (s service) forTarget(
 	}
 
 	if err = s.configureDependencies(nt, func(name string) error {
-		return s.forTarget(ctx, name, p, res)
+		return s.forTarget(ctx, name, p)
 	}); err != nil {
 		return err
 	}
 
 	// Resolving the build configuration for the target
-	bc, err := nt.BuildConfigurationList.FindConfiguration(s.Config.Configuration)
+	bc, err := nt.BuildConfigurationList.FindConfiguration(s.API.Config.Configuration)
 	if err != nil {
 		return err
 	}
 
 	// Resolving signature configuration for the bundle identifier
 	sc, err := s.API.
-		SignatureResolver().
+		SignatureResolver.
 		Resolve(ctx, bc.BuildSettings["PRODUCT_BUNDLE_IDENTIFIER"], nt.ProductType)
 	if err != nil {
 		return err
 	}
 
-	*res = append(*res, api.TargetSignatureConfig{
+	cfg = append(cfg, api.TargetSignatureConfig{
 		TargetName: t,
 		Config:     sc,
 	})
@@ -182,7 +192,7 @@ func (s service) forTarget(
 	return nil
 }
 
-func (s service) configureDependencies(nt pbx.NativeTarget, f func(string) error) error {
+func (s signatureService) configureDependencies(nt pbx.NativeTarget, f func(string) error) error {
 	// Do the native target has native depdendencies
 	for _, dp := range nt.Dependencies {
 		switch dp.ProductType {

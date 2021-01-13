@@ -16,14 +16,10 @@ const pathProject = "/path/to/project.xcodeproj"
 
 type XCodebuildSuite struct {
 	suite.Suite
-
-	api     *api.APIMock
-	cfg     *api.Config
-	subject xcodeBuildService
-
+	*api.API
+	subject      xcodeBuildService
 	mockCmd      *utiltest.MockExecutorCmd
 	mockExecutor *utiltest.MockExecutor
-
 }
 
 func TestXCodebuildSuite(t *testing.T) {
@@ -31,16 +27,15 @@ func TestXCodebuildSuite(t *testing.T) {
 }
 
 func (x *XCodebuildSuite) BeforeTest(suiteName, testName string) {
-	x.cfg = new(api.Config)
-	x.cfg.Path = pathWorkspace
-
 	x.mockCmd = new(utiltest.MockExecutorCmd)
 	x.mockExecutor = new(utiltest.MockExecutor)
 
-	x.api = new(api.APIMock)
-	x.api.On("Exec").Return(x.mockExecutor)
-
-	x.subject = xcodeBuildService{x.api, x.cfg}
+	x.API = &api.API{
+		Config: new(api.Config),
+		Exec:   x.mockExecutor,
+	}
+	x.API.Config.Path = pathWorkspace
+	x.subject = xcodeBuildService{x.API}
 }
 
 func (x *XCodebuildSuite) TestXCodeBuildArgumentDependingOfProjectType() {
@@ -59,7 +54,7 @@ func (x *XCodebuildSuite) TestXCodeBuildArgumentDependingOfProjectType() {
 	for _, c := range cases {
 		x.Run(c.path, func() {
 			// setup:
-			x.cfg.Path = c.path
+			x.API.Config.Path = c.path
 
 			// when:
 			res := x.subject.GetArg()
@@ -89,7 +84,7 @@ func (x *XCodebuildSuite) TestList() {
 		x.Run(c.name, func() {
 			// setup:
 			x.BeforeTest("XCodebuildSuite", c.name)
-			x.cfg.Path = c.path
+			x.API.Config.Path = c.path
 			x.mockCmd.On("CombinedOutput").Return(c.output, c.err)
 			x.mockExecutor.On("CommandContext",
 				mock.Anything,

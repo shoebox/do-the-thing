@@ -9,12 +9,11 @@ import (
 const buddy = "/usr/libexec/PlistBuddy"
 
 type plistBuddy struct {
-	api.API
-	*api.Config
+	*api.API
 }
 
-func NewPListBuddy(api api.API, cfg *api.Config) plistBuddy {
-	return plistBuddy{api, cfg}
+func NewPListBuddy(api *api.API) plistBuddy {
+	return plistBuddy{api}
 }
 
 func (p plistBuddy) computePath(action, objectId, path, value string) string {
@@ -25,7 +24,7 @@ func (p plistBuddy) computePath(action, objectId, path, value string) string {
 }
 
 func (p plistBuddy) AddStringValue(ctx context.Context, objectId string, path string, value string) error {
-	return p.API.Exec().CommandContext(ctx,
+	return p.API.Exec.CommandContext(ctx,
 		buddy,
 		"-c",
 		fmt.Sprintf("%v string %v", p.computePath("Add", objectId, path, value), value),
@@ -38,7 +37,7 @@ func (p plistBuddy) SetStringValue(ctx context.Context, objectId string, path st
 		path,
 		value)
 
-	return p.API.Exec().CommandContext(ctx,
+	return p.API.Exec.CommandContext(ctx,
 		buddy,
 		"-c",
 		action,

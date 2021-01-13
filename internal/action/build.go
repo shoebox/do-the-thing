@@ -29,9 +29,9 @@ func (a actionBuild) Run(ctx context.Context) error {
 
 func (a actionBuild) build(ctx context.Context) error {
 	log.Info().Msg("Building")
-	return RunCmd(a.API.Exec().CommandContext(ctx,
+	return RunCmd(a.API.Exec.CommandContext(ctx,
 		xcode.Cmd,
-		a.API.XCodeBuildService().GetArg(),
+		a.API.BuildService.GetArg(),
 		a.Config.Path,
 		xcode.ActionBuild,
 		xcode.FlagScheme, a.Config.Scheme,

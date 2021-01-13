@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/rs/zerolog/log"
 	"go.mozilla.org/pkcs7"
 )
 
@@ -27,11 +28,11 @@ var (
 
 // provisioningService implement the ProvisioningService interface
 type provisioningService struct {
-	api.API
+	*api.API
 }
 
 // NewProvisioningService create a new instance of the provisioning service
-func NewProvisioningService(api api.API) api.ProvisioningService {
+func NewProvisioningService(api *api.API) api.ProvisioningService {
 	return provisioningService{api}
 }
 
@@ -64,6 +65,11 @@ func (p provisioningService) Decode(ctx context.Context, r io.Reader) (api.Provi
 }
 
 func (p provisioningService) Install(pp *api.ProvisioningProfile) error {
+	log.Info().
+		Str("ID", pp.UUID).
+		Str("BundleIdentifier", pp.BundleIdentifier).
+		Msg("Installing provisioning")
+
 	input, err := ioutil.ReadFile(pp.FilePath)
 	if err != nil {
 		return err
@@ -140,7 +146,7 @@ func (p provisioningService) readProvisioningFile(
 	path string,
 ) (*api.ProvisioningProfile, error) {
 	// Open the file to a reader
-	f, err := p.API.FileService().Open(path)
+	f, err := p.API.FileService.Open(path)
 	if err != nil {
 		return nil, nil
 	}
@@ -186,7 +192,7 @@ func (p provisioningService) ResolveProvisioningFilesInFolder(
 		go p.decodingWorker(i, &wg, ctx, paths, &res)
 	}
 
-	err := p.API.FileService().Walk(ctx, root, isProvisioningFile, paths, &wg)
+	err := p.API.FileService.Walk(ctx, root, isProvisioningFile, paths, &wg)
 
 	if err != nil {
 		fmt.Println("err ", err)

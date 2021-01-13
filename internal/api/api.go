@@ -11,27 +11,28 @@ type CertificateService interface {
 	ResolveInFolder(ctx context.Context, root string) []*P12Certificate
 }
 
-// API definition interface. This is the central point to retrieve the instance of the diferent
-// services used
-type API interface {
-	ActionArchive() Action
-	ActionBuild() Action
-	ActionRunTest() Action
-	CertificateService() CertificateService
-	Config() *Config
-	DestinationService() DestinationService
-	Exec() Executor
-	FileService() FileService
-	KeyChainService() KeyChain
-	PathService() PathService
-	PListBuddyService() PListBuddyService
-	ProvisioningService() ProvisioningService
-	SignatureResolver() SignatureResolver
-	SignatureService() SignatureService
-	XCodeBuildService() BuildService
-	XCodeListService() ListService
-	XCodeProjectService() ProjectService
-	XCodeSelectService() SelectService
+type API struct {
+	ActionArchive       Action
+	ActionBuild         Action
+	ActionPack          Action
+	ActionRun           Action
+	ActionRunTest       Action
+	BuildService        BuildService
+	CertificateService  CertificateService
+	Config              *Config
+	FileService         FileService
+	DestinationService  DestinationService
+	Exec                Executor
+	ExportOptionService ExportOptionsService
+	KeyChain
+	PathService         PathService
+	PlistBuddyService   PListBuddyService
+	ProvisioningService ProvisioningService
+	SignatureResolver   SignatureResolver
+	SignatureService    SignatureService
+	XcodeListService    ListService
+	XCodeProjectService ProjectService
+	XcodeSelectService  SelectService
 }
 
 type Action interface {

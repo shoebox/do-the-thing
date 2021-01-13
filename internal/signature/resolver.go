@@ -13,14 +13,13 @@ import (
 // NewResolver creates a new instance of the signature resolver to be use to find the
 // right signature configuration for the provided configuration (aka pair of certificate and
 // provisioning)
-func NewResolver(api api.API, cfg *api.Config) api.SignatureResolver {
-	return signatureResolver{api, cfg}
+func NewResolver(api *api.API) api.SignatureResolver {
+	return signatureResolver{api}
 }
 
 // signatureResolver is the implementation of the SignatureResolver interface
 type signatureResolver struct {
-	api.API
-	*api.Config
+	*api.API
 }
 
 // Resolve will to try to resolve and match of provisioning profile and certficiate aginst the
@@ -34,8 +33,7 @@ func (r signatureResolver) Resolve(
 	var res api.SignatureConfiguration
 
 	// resolving the candidates to match against
-	candidates := r.API.
-		ProvisioningService().
+	candidates := r.API.ProvisioningService.
 		ResolveProvisioningFilesInFolder(ctx, r.Config.CodeSignOption.Path)
 
 	// Matching the right provisioning file for the project bundle identifier configuration
@@ -52,7 +50,7 @@ func (r signatureResolver) Resolve(
 	provisioningPublicKey := res.ProvisioningProfile.Certificates[0].Raw
 
 	// We iterate on all certificates found in the path
-	certs := r.API.CertificateService().ResolveInFolder(ctx, r.Config.CodeSignOption.Path)
+	certs := r.API.CertificateService.ResolveInFolder(ctx, r.Config.CodeSignOption.Path)
 
 	// And we try to find a matching certificate to the provisioning profile
 	if res.Cert, err = r.findMatchingCert(certs, provisioningPublicKey); err != nil {

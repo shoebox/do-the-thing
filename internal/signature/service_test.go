@@ -11,9 +11,9 @@ import (
 
 type signatureServiceSuite struct {
 	suite.Suite
-	API     *api.APIMock
+	API     *api.API
 	plist   *api.MockPlistAPI
-	subject *service
+	subject *signatureService
 }
 
 // suite testing entrypoint
@@ -22,12 +22,12 @@ func TestSignatureServiceSuite(t *testing.T) {
 }
 
 func (s *signatureServiceSuite) BeforeTest(suiteName, testName string) {
-	s.API = new(api.APIMock)
 	s.plist = new(api.MockPlistAPI)
+	s.API = &api.API{
+		PlistBuddyService: s.plist,
+	}
 
-	s.API.On("PListBuddyService").Return(s.plist)
-
-	s.subject = new(service)
+	s.subject = new(signatureService)
 	s.subject.API = s.API
 }
 

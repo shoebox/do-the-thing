@@ -9,17 +9,15 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func NewArchive(api api.API, cfg *api.Config) api.Action {
-	return actionArchive{api, cfg}
+func NewArchive(api *api.API) api.Action {
+	return ActionArchive{api}
 }
 
-type actionArchive struct {
-	api.API
-	*api.Config
+type ActionArchive struct {
+	*api.API
 }
 
-func (a actionArchive) Run(ctx context.Context) error {
-
+func (a ActionArchive) Run(ctx context.Context) error {
 	xce := xcode.ParseXCodeBuildError(a.build(ctx))
 	if xce != nil {
 		color.New(color.FgHiRed, color.Bold).Println(xce.Error())
@@ -28,27 +26,27 @@ func (a actionArchive) Run(ctx context.Context) error {
 	return xce
 }
 
-func (a actionArchive) build(ctx context.Context) error {
+func (a ActionArchive) build(ctx context.Context) error {
 	log.Info().Msg("Archiving")
 
-	if err := a.API.SignatureService().Run(ctx); err != nil {
+	if err := a.API.SignatureService.Run(ctx); err != nil {
 		return err
 	}
 
 	// defer deletion of the keychain
-	defer a.API.KeyChainService().Delete(ctx)
+	defer a.API.KeyChain.Delete(ctx)
 
 	// The archiving arguments
 	args := []string{
-		a.API.XCodeBuildService().GetArg(),
-		a.API.XCodeBuildService().GetProjectPath(),
+		a.API.BuildService.GetArg(),
+		a.API.Config.Path,
 		xcode.ActionArchive,
-		xcode.FlagScheme, a.Config.Scheme,
-		xcode.FlagConfiguration, a.Config.Configuration,
-		xcode.FlagArchivePath, a.API.PathService().Archive(),
-		a.API.PathService().ObjRoot(),
-		a.API.PathService().SymRoot(),
+		xcode.FlagScheme, a.API.Config.Scheme,
+		xcode.FlagConfiguration, a.API.Config.Configuration,
+		xcode.FlagArchivePath, a.API.PathService.Archive(),
+		a.API.PathService.ObjRoot(),
+		a.API.PathService.SymRoot(),
 	}
 
-	return RunCmd(a.API.Exec().CommandContext(ctx, xcode.Cmd, args...))
+	return RunCmd(a.API.Exec.CommandContext(ctx, xcode.Cmd, args...))
 }
