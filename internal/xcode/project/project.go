@@ -43,7 +43,7 @@ func (p Project) ValidateConfiguration(c api.Config) error {
 
 // projectService struct definition
 type projectService struct {
-	api.API
+	*api.API
 }
 
 type list struct {
@@ -52,7 +52,7 @@ type list struct {
 }
 
 // NewProjectService Create a new instance of the PBXProj service
-func NewProjectService(api api.API) api.ProjectService {
+func NewProjectService(api *api.API) api.ProjectService {
 	return projectService{api}
 }
 
@@ -93,12 +93,12 @@ func (s projectService) decodeProject(b []byte) (pbx.PBXProject, error) {
 }
 
 func (s projectService) resolvePbxProj() ([]byte, error) {
-	path, err := filepath.Abs(s.API.XCodeBuildService().GetProjectPath() + "/project.pbxproj")
+	path, err := filepath.Abs(s.API.Config.Path + "/project.pbxproj")
 	if err != nil {
 		return []byte{}, err
 	}
 
-	return s.API.FileService().OpenAndReadFileContent(path)
+	return s.API.FileService.OpenAndReadFileContent(path)
 }
 
 func (s projectService) resolveProject(ctx context.Context) (api.Project, error) {
@@ -125,7 +125,7 @@ func (s projectService) resolveProject(ctx context.Context) (api.Project, error)
 }
 
 func (s projectService) xCodeCall(ctx context.Context) ([]byte, error) {
-	str, err := s.API.XCodeBuildService().List(ctx)
+	str, err := s.API.BuildService.List(ctx)
 	if err != nil {
 		return nil, err
 	}

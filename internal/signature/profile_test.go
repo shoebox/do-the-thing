@@ -55,9 +55,6 @@ const validProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
 	<date>2028-01-01T14:00:00Z</date>
 	<key>Name</key>
 	<string>DO NOT USE: only for dummy signing</string>
-	<key>ProvisionedDevices</key>
-	<array>
-	</array>
 	<key>TeamIdentifier</key>
 	<array>
 		<string>12345ABCDE</string>
@@ -70,6 +67,11 @@ const validProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
 	<string>B5C2906D-D6EE-476E-AF17-D99AE14644AA</string>
 	<key>Version</key>
 	<integer>1</integer>
+	<key>ProvisionedDevices</key>
+	<array>
+		<string>caf2b03e4a4e1a80d9492c8bdcea0ea8df6a14a7</string>
+		<string>1a5b7515ed0751d6de312f9520267f502b20eab0</string>
+	</array>
 </dict>
 </plist>`
 
@@ -116,6 +118,8 @@ const invalidProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
 	<string>DO NOT USE: only for dummy signing</string>
 	<key>ProvisionedDevices</key>
 	<array>
+		<string>caf2b03e4a4e1a80d9492c8bdcea0ea8df6a14a7</string>
+		<string>1a5b7515ed0751d6de312f9520267f502b20eab0</string>
 	</array>
 	<key>TeamIdentifier</key>
 	<array>
@@ -129,6 +133,30 @@ const invalidProvisioning = `<?xml version="1.0" encoding="UTF-8"?>
 	<string>B5C2906D-D6EE-476E-AF17-D99AE14644AA</string>
 	<key>Version</key>
 	<integer>1</integer>
+</dict>
+</plist>`
+
+const taskAllowFalse = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Entitlements</key>
+	<dict>
+		<key>get-task-allow</key>
+		<false/>
+	</dict>
+</dict>
+</plist>`
+
+const taskAllowTrue = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Entitlements</key>
+	<dict>
+		<key>get-task-allow</key>
+		<true/>
+	</dict>
 </dict>
 </plist>`
 
@@ -169,6 +197,11 @@ func TestDecode(t *testing.T) {
 	assert.Equal(t, "Selfsigners united", pp.TeamName)
 	assert.Equal(t, "12345ABCDE.*", pp.Entitlements.AppID)
 	assert.Equal(t, "B5C2906D-D6EE-476E-AF17-D99AE14644AA", pp.UUID)
+	assert.Equal(t, &[]string{
+		"caf2b03e4a4e1a80d9492c8bdcea0ea8df6a14a7",
+		"1a5b7515ed0751d6de312f9520267f502b20eab0",
+	}, pp.ProvisionedDevices)
+	assert.Nil(t, pp.ProvisionsAllDevices)
 	assert.NoError(t, err)
 }
 

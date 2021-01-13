@@ -28,32 +28,27 @@ const (
 )
 
 type xcodeBuildService struct {
-	api.API
-	cfg *api.Config
+	*api.API
 }
 
 // NewService creates a new instance of the xcodebuild service
-func NewService(api api.API, cfg *api.Config) api.BuildService {
-	return xcodeBuildService{API: api, cfg: cfg}
+func NewService(api *api.API) api.BuildService {
+	return xcodeBuildService{API: api}
 }
 
 // GetArg returns the right flag to execute depending of the type of project path configured
 func (s xcodeBuildService) GetArg() string {
 	arg := FlagProject
-	if filepath.Ext(s.cfg.Path) == ".xcworkspace" {
+	if filepath.Ext(s.API.Config.Path) == ".xcworkspace" {
 		arg = FlagWorkspace
 	}
 	return arg
 }
 
-func (s xcodeBuildService) GetProjectPath() string {
-	return s.cfg.Path
-}
-
 // List lists the targets and configurations in a project, or the schemes in a workspace
 func (s xcodeBuildService) List(ctx context.Context) (string, error) {
 	// Executing command
-	cmd := s.API.Exec().CommandContext(ctx, Cmd, FlagList, FlagJSON, s.GetArg(), s.cfg.Path)
+	cmd := s.API.Exec.CommandContext(ctx, Cmd, FlagList, FlagJSON, s.GetArg(), s.API.Config.Path)
 
 	// Resolving combined outputs
 	b, err := cmd.CombinedOutput()
@@ -66,11 +61,11 @@ func (s xcodeBuildService) List(ctx context.Context) (string, error) {
 
 // ShowDestinations will resolve the destinations for the scheme
 func (s xcodeBuildService) ShowDestinations(ctx context.Context, scheme string) (string, error) {
-	cmd := s.API.Exec().CommandContext(ctx,
+	cmd := s.API.Exec.CommandContext(ctx,
 		Cmd,
 		FlagShowDestinations,
 		s.GetArg(),
-		s.cfg.Path,
+		s.API.Config.Path,
 		FlagScheme,
 		scheme)
 

@@ -25,17 +25,17 @@ const (
 var ErrDestinationResolutionFailed = errors.New("Command execution failed")
 
 type destinationService struct {
-	api.API
+	*api.API
 }
 
 // NewDestinationService Create a new instance of the project service
-func NewDestinationService(a api.API) api.DestinationService {
+func NewDestinationService(a *api.API) api.DestinationService {
 	return destinationService{a}
 }
 
 // Boot boot a destination
 func (s destinationService) Boot(ctx context.Context, d api.Destination) error {
-	cmd := s.API.Exec().CommandContext(ctx, xcRun, simCtl, actionBootStatus, d.ID, flagBoot)
+	cmd := s.API.Exec.CommandContext(ctx, xcRun, simCtl, actionBootStatus, d.ID, flagBoot)
 
 	b, err := cmd.Output()
 	if err != nil {
@@ -54,8 +54,7 @@ func (s destinationService) Boot(ctx context.Context, d api.Destination) error {
 // ShutDown a device
 func (s destinationService) ShutDown(ctx context.Context, d api.Destination) error {
 	log.Info().Str("Destination ID", d.ID).Msg("Shutdown destination")
-	cmd := s.API.
-		Exec().
+	cmd := s.API.Exec.
 		CommandContext(ctx, xcRun, simCtl, actionShutdown, d.ID)
 
 	if _, err := cmd.Output(); err != nil {
@@ -67,7 +66,7 @@ func (s destinationService) ShutDown(ctx context.Context, d api.Destination) err
 
 // ListDestinations Lists the valid destinations for a project or workspace and scheme
 func (s destinationService) List(ctx context.Context, scheme string) ([]api.Destination, error) {
-	res, err := s.API.XCodeBuildService().ShowDestinations(ctx, scheme)
+	res, err := s.API.BuildService.ShowDestinations(ctx, scheme)
 	if err != nil {
 		return nil, NewListingError()
 	}

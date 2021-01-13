@@ -17,7 +17,7 @@ import (
 var dest = api.Destination{ID: "123-456-789"}
 
 type DestinationTestSuite struct {
-	API            *api.APIMock
+	API            *api.API
 	cancel         func()
 	ctx            context.Context
 	mockCmd        *utiltest.MockExecutorCmd
@@ -37,9 +37,9 @@ func (s *DestinationTestSuite) BeforeTest(suiteName, testName string) {
 	s.mockExecutor = new(utiltest.MockExecutor)
 	s.mockXcodeBuild = new(xcode.XCodeBuildMock)
 
-	s.API = new(api.APIMock)
-	s.API.On("Exec").Return(s.mockExecutor)
-	s.API.On("XCodeBuildService").Return(s.mockXcodeBuild)
+	s.API = new(api.API)
+	s.API.Exec = s.mockExecutor
+	s.API.BuildService = s.mockXcodeBuild
 
 	s.ctx, s.cancel = context.WithTimeout(context.Background(), 1*time.Second)
 	s.subject = destinationService{s.API}

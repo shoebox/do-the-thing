@@ -15,10 +15,10 @@ type CLI interface {
 
 type menu struct {
 	*api.Config
-	api.API
+	*api.API
 }
 
-func New(a api.API, cfg *api.Config) CLI {
+func New(a *api.API, cfg *api.Config) CLI {
 	return menu{API: a, Config: cfg}
 }
 
@@ -30,6 +30,7 @@ func (m menu) Run() error {
 
 	app.Commands = []*cli.Command{
 		{Name: "build", Action: m.buildCommand},
+		{Name: "package", Action: m.packageCommand},
 		{Name: "archive", Action: m.archiveCommand},
 		{Name: "test", Action: m.testCommand},
 	}
@@ -52,15 +53,19 @@ func (m menu) Run() error {
 }
 
 func (m menu) archiveCommand(c *cli.Context) error {
-	return m.runAction(m.API.ActionArchive())
+	return m.runAction(m.API.ActionArchive)
 }
 
 func (m menu) buildCommand(c *cli.Context) error {
-	return m.runAction(m.API.ActionBuild())
+	return m.runAction(m.API.ActionBuild)
+}
+
+func (m menu) packageCommand(c *cli.Context) error {
+	return m.runAction(m.API.ActionPack)
 }
 
 func (m menu) testCommand(c *cli.Context) error {
-	return m.runAction(m.API.ActionRunTest())
+	return m.runAction(m.API.ActionRunTest)
 }
 
 func (m menu) runAction(action api.Action) error {

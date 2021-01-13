@@ -23,7 +23,7 @@ var (
 
 type keychainTestSuite struct {
 	suite.Suite
-	API     *api.APIMock
+	API     *api.API
 	pm      *api.PathMock
 	exec    *utiltest.MockExecutor
 	subject keychain
@@ -35,10 +35,13 @@ func TestKeychainSuite(t *testing.T) {
 
 func (s *keychainTestSuite) BeforeTest(suiteName, testName string) {
 	s.exec = new(utiltest.MockExecutor)
-	s.API = new(api.APIMock)
+	s.API = new(api.API)
 	s.pm = new(api.PathMock)
-	s.API.On("Exec").Return(s.exec)
-	s.API.On("PathService").Return(s.pm)
+
+	s.API = &api.API{
+		Exec:        s.exec,
+		PathService: s.pm,
+	}
 	s.subject = keychain{API: s.API}
 }
 

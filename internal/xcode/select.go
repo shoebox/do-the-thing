@@ -21,10 +21,10 @@ var (
 )
 
 // selectService The XCode version selection service struct
-type selectService struct{ api.API }
+type selectService struct{ *api.API }
 
 // NewSelectService create a new instance of the xcode selector service
-func NewSelectService(api api.API) api.SelectService {
+func NewSelectService(api *api.API) api.SelectService {
 	return selectService{api}
 }
 
@@ -61,7 +61,7 @@ func (s *selectService) findMatch(
 	valid func(install *api.Install, r semver.Range) (bool, error),
 ) (*api.Install, error) {
 	// Resolve the list of candidates
-	list, err := s.API.XCodeListService().List(ctx)
+	list, err := s.API.XcodeListService.List(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -9,7 +9,7 @@ import (
 
 type pathServiceSuite struct {
 	suite.Suite
-	API     *api.APIMock
+	API     *api.API
 	cfg     *api.Config
 	subject pathService
 }
@@ -19,13 +19,14 @@ func TestKeychainSuite(t *testing.T) {
 }
 
 func (s *pathServiceSuite) BeforeTest(suiteName, testName string) {
-	s.API = new(api.APIMock)
-	s.cfg = new(api.Config)
-	s.cfg.Path = "/path/to/toto.xcodeproj"
-	s.cfg.Scheme = "schemeName"
-	s.cfg.Configuration = "configName"
-	s.cfg.Target = "targetName"
-	s.API.On("Config").Return(s.cfg)
+	s.API = &api.API{
+		Config: &api.Config{
+			Path:          "/path/to/toto.xcodeproj",
+			Scheme:        "schemeName",
+			Configuration: "configName",
+			Target:        "targetName",
+		},
+	}
 	s.subject = pathService{s.API}
 }
 
@@ -54,6 +55,14 @@ func (s *pathServiceSuite) TestKeyChain() {
 
 	// then:
 	s.Assert().Equal("/path/to/Build/do-the-thing.keychain", p)
+}
+
+func (s *pathServiceSuite) TestExportPlist() {
+	// when:
+	p := s.subject.ExportPlist()
+
+	// then:
+	s.Assert().Equal("/path/to/Build/targetName-schemeName-configName-export.plist", p)
 }
 
 func (s *pathServiceSuite) TestObjRoot() {

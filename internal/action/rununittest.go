@@ -22,15 +22,15 @@ func NewActionRun(api api.API, cfg *api.Config) api.Action {
 func (a actionRunTest) Run(ctx context.Context) error {
 	log.Info().Msg("Running unit tests")
 
-	if err := a.API.SignatureService().Run(ctx); err != nil {
+	if err := a.API.SignatureService.Run(ctx); err != nil {
 		return err
 	}
 
 	// defer deletion of the keychain
-	defer a.API.KeyChainService().Delete(ctx)
+	defer a.API.KeyChain.Delete(ctx)
 
 	// Creating a temp folder to contains the test results
-	outputPath := a.API.PathService().XCResult()
+	outputPath := a.API.PathService.XCResult()
 
 	xce := xcode.ParseXCodeBuildError(a.runXCodebuildTest(ctx, outputPath))
 	if xce != nil {
@@ -43,10 +43,10 @@ func (a actionRunTest) Run(ctx context.Context) error {
 func (a actionRunTest) runXCodebuildTest(ctx context.Context, path string) error {
 	fmt.Println(color.BlueString("Running test on %v (%v)", a.Config.Destination.Name, a.Config.Destination.ID))
 
-	return RunCmd(a.API.Exec().CommandContext(ctx,
+	return RunCmd(a.API.Exec.CommandContext(ctx,
 		xcode.Cmd,
-		a.API.XCodeBuildService().GetArg(),
-		a.API.XCodeBuildService().GetProjectPath(),
+		a.API.BuildService.GetArg(),
+		a.API.Config.Path,
 		xcode.ActionTest,
 		xcode.FlagScheme, a.Config.Scheme,
 		xcode.FlagDestination, fmt.Sprintf("id=%s", a.Config.Destination.ID),

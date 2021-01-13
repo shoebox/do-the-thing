@@ -24,10 +24,10 @@ const (
 )
 
 // listService Service to retrieve the list of xcode installation on the system
-type listService struct{ api.API }
+type listService struct{ *api.API }
 
 // NewXCodeListService create a new instance of the service
-func NewXCodeListService(api api.API) api.ListService {
+func NewXCodeListService(api *api.API) api.ListService {
 	return listService{api}
 }
 
@@ -42,8 +42,7 @@ func (s listService) List(ctx context.Context) ([]*api.Install, error) {
 }
 
 func (s listService) spotlightSearch(ctx context.Context) ([]byte, error) {
-	return s.API.
-		Exec().
+	return s.API.Exec.
 		CommandContext(ctx, MdFind, BundleIdentifier).
 		Output()
 }
@@ -75,9 +74,7 @@ func (s listService) parseSpotlightEntry(path string) (*api.Install, error) {
 }
 
 func (s listService) validate(path string) (bool, error) {
-	return s.API.
-		FileService().
-		IsDir(path)
+	return s.API.FileService.IsDir(path)
 }
 
 func (s listService) resolveXcode(path string) (*api.Install, error) {
@@ -88,7 +85,7 @@ func (s listService) resolveXcode(path string) (*api.Install, error) {
 	}
 
 	// Read the file content
-	fb, err := s.API.FileService().OpenAndReadFileContent(abs)
+	fb, err := s.API.FileService.OpenAndReadFileContent(abs)
 	if err != nil {
 		return nil, err
 	}

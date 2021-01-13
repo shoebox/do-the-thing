@@ -24,5 +24,4 @@ type BuildService interface {
 	List(ctx context.Context) (string, error)
 	ShowDestinations(ctx context.Context, scheme string) (string, error)
 	GetArg() string
-	GetProjectPath() string
 }

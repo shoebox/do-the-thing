@@ -15,7 +15,7 @@ var cfg *api.Config
 func main() {
 	// logger configuration
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
 	// intializing the client
 	cfg = &api.Config{}

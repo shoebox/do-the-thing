@@ -9,24 +9,34 @@ import (
 const BuildFolder = "../Build/"
 
 type pathService struct {
-	api.API
+	*api.API
 }
 
-func NewPathService(p api.API) api.PathService {
+func NewPathService(p *api.API) api.PathService {
 	return pathService{API: p}
 }
 
 func (p pathService) buildFolder() string {
-	return filepath.Clean(filepath.Join(p.API.Config().Path, BuildFolder))
+	return filepath.Clean(filepath.Join(p.API.Config.Path, BuildFolder))
 }
 
 func (p pathService) Archive() string {
 	return filepath.Clean(filepath.Join(
 		p.buildFolder(),
 		fmt.Sprintf("%v-%v-%v.xcarchive",
-			p.API.Config().Target,
-			p.API.Config().Scheme,
-			p.API.Config().Configuration),
+			p.API.Config.Target,
+			p.API.Config.Scheme,
+			p.API.Config.Configuration),
+	))
+}
+
+func (p pathService) ExportPlist() string {
+	return filepath.Clean(filepath.Join(
+		p.buildFolder(),
+		fmt.Sprintf("%v-%v-%v-export.plist",
+			p.API.Config.Target,
+			p.API.Config.Scheme,
+			p.API.Config.Configuration),
 	))
 }
 
@@ -46,9 +56,9 @@ func (p pathService) XCResult() string {
 	return filepath.Join(
 		p.buildFolder(),
 		fmt.Sprintf("%v-%v-%v.xcresult",
-			p.API.Config().Target,
-			p.API.Config().Scheme,
-			p.API.Config().Configuration,
+			p.API.Config.Target,
+			p.API.Config.Scheme,
+			p.API.Config.Configuration,
 		),
 	)
 }
