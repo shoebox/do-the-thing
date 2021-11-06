@@ -13,6 +13,11 @@ func (p *PathMock) Archive() string {
 	return c.String(0)
 }
 
+func (p *PathMock) ExportPList() string {
+	c := p.Called()
+	return c.String(0)
+}
+
 func (p *PathMock) KeyChain() string {
 	c := p.Called()
 	return c.String(0)
