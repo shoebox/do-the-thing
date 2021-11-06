@@ -3,6 +3,7 @@ package signature
 import "fmt"
 
 const (
+	ErrorExportOptions                 = "Failed to created export options"
 	ErrorBuildConfigurationResolution  = "Failed to resolve build configuration"
 	ErrorBuildSettingsConfiguration    = "Failed to configure XCBuildConfiguration"
 	ErrorCertificateImport             = "Failed to import certificate"
