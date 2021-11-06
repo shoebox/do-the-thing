@@ -1,15 +1,5 @@
 package keychain
 
-import (
-	"context"
-	"dothething/internal/api"
-	"dothething/internal/utiltest"
-	"errors"
-	"testing"
-
-	"github.com/stretchr/testify/suite"
-)
-
 const (
 	k1 = "/test/test1.keychain"
 	k2 = "/test/test2/test3.keychain"
@@ -21,6 +11,7 @@ var (
 	keychainPath = "/path/to/file.keychain"
 )
 
+/*
 type keychainTestSuite struct {
 	suite.Suite
 	API     *api.API
@@ -35,24 +26,23 @@ func TestKeychainSuite(t *testing.T) {
 
 func (s *keychainTestSuite) BeforeTest(suiteName, testName string) {
 	s.exec = new(utiltest.MockExecutor)
-	s.API = new(api.API)
 	s.pm = new(api.PathMock)
 
 	s.API = &api.API{
-		Exec:        s.exec,
+		Exec:        &s.exec,
 		PathService: s.pm,
 	}
 	s.subject = keychain{API: s.API}
+
+	// setup:
+	s.pm.On("KeyChain").Return(k1)
+
 }
 
 func (s *keychainTestSuite) AfterTest(suiteName, testName string) {
 }
 
 func (s *keychainTestSuite) TestNewKeychain() {
-	// setup:
-	p := "/path/to/k.keychain"
-	s.pm.On("KeyChain").Return(p)
-
 	// when:
 	k, err := NewKeyChain(s.API)
 
@@ -60,7 +50,7 @@ func (s *keychainTestSuite) TestNewKeychain() {
 	s.Assert().NoError(err)
 
 	// and:
-	s.Assert().Equal(k.GetPath(), p)
+	s.Assert().NotNil(k)
 }
 
 func (s *keychainTestSuite) TestCreateShouldHandleErrors() {
@@ -69,7 +59,7 @@ func (s *keychainTestSuite) TestCreateShouldHandleErrors() {
 	// setup:
 	s.exec.MockCommandContext(
 		SecurityUtil,
-		[]string{ActionCreateKeychain, FlagPassword, "p4ssword", s.subject.GetPath()},
+		[]string{ActionCreateKeychain, FlagPassword, "p4ssword", s.pm.KeyChain()},
 		"",
 		errors.New(errText))
 
@@ -98,7 +88,6 @@ func (s *keychainTestSuite) TestKeyChainCreatePasswordShouldNotBeEmpty() {
 
 func (s *keychainTestSuite) TestKeyChainConfiguration() {
 	// setup
-	s.subject.filePath = k1
 	s.exec.MockCommandContext(SecurityUtil,
 		[]string{ActionSettings, k1},
 		"",
@@ -124,14 +113,14 @@ func (s *keychainTestSuite) TestSetPartitionList() {
 		"-k", passwd, // Password for keychain
 		"-D", "description", // Match description string
 		"-t", "private", // We are looking for a private key
-		keychainPath,
+		k1,
 	},
 		"",
 		errors.New(errText),
 	)
 
 	// when:
-	s.subject.filePath = keychainPath
+	s.pm.On("Keychain").Return(keychainPath)
 	err := s.subject.setPartitionList(context.Background(), passwd, "description")
 
 	// then:
@@ -144,11 +133,10 @@ func (s *keychainTestSuite) TestSetPartitionList() {
 
 func (s *keychainTestSuite) TestImportCertificateShouldHandleErrors() {
 	// setup:
-
 	s.exec.MockCommandContext(SecurityUtil, []string{
 		ActionImport,
 		"toto/file.p12",
-		FlagKeychain, s.subject.GetPath(),
+		FlagKeychain, k1,
 		FlagPassphase, passwd,
 		FlagAppPath, "/usr/bin/codesign",
 		FlagNonExtractable,
@@ -163,9 +151,7 @@ func (s *keychainTestSuite) TestImportCertificateShouldHandleErrors() {
 
 func (s *keychainTestSuite) TestDeleteKeychainShouldHandleError() {
 	// setup
-	file := "/path/to/file.keychain"
-	s.subject.filePath = file
-	s.exec.MockCommandContextError(SecurityUtil, []string{ActionDeleteKeychain, file}, errors.New("any"))
+	s.exec.MockCommandContextError(SecurityUtil, []string{ActionDeleteKeychain, k1}, errors.New("any"))
 
 	// when:
 	err := s.subject.Delete(context.Background())
@@ -173,103 +159,4 @@ func (s *keychainTestSuite) TestDeleteKeychainShouldHandleError() {
 	// then:
 	s.Assert().EqualError(err, deleteError)
 }
-
-func (s *keychainTestSuite) TestGetSearchListInputOutputAndParsing() {
-	ctx := context.Background()
-
-	// setup:
-	cases := []struct {
-		expected []string
-		output   string
-		err      error
-	}{
-		{
-			output:   `    "/Users/user.name/Library/Keychains/login.keychain-db"`,
-			expected: []string{"/Users/user.name/Library/Keychains/login.keychain-db"},
-			err:      nil,
-		},
-		{
-			output: `    "/Users/user.name/Library/Keychains/login.keychain-db"
-    "/Users/user.name/Library/Keychains/test2.keychain-db"`,
-			expected: []string{
-				"/Users/user.name/Library/Keychains/login.keychain-db",
-				"/Users/user.name/Library/Keychains/test2.keychain-db",
-			},
-			err: nil,
-		},
-		{
-			output: "",
-			err:    errors.New("toto"),
-		},
-	}
-
-	for _, c := range cases {
-		// setup:
-		s.BeforeTest("keychainTestSuite", "TestSetSearchListShouldHandleErrors")
-		s.exec.MockCommandContext(SecurityUtil, []string{ActionListKeyChains}, c.output, c.err)
-
-		// when:
-		r, e := s.subject.getSearchList(ctx)
-
-		// and:
-		s.Assert().EqualValues(c.expected, r)
-		s.Assert().EqualValues(c.err, e)
-	}
-}
-
-func (s *keychainTestSuite) TestSetSearchListShouldHandleErrors() {
-	// setup:
-	errText := "mock error"
-
-	s.exec.MockCommandContext(
-		SecurityUtil,
-		[]string{
-			ActionListKeyChains,
-			"-s",
-			k1,
-			k2,
-		},
-		"",
-		errors.New(errText),
-	)
-
-	// when:
-	err := s.subject.setSearchList(context.Background(), []string{k1, k2})
-
-	// then:
-	s.Assert().EqualError(err, errText)
-}
-
-func (s *keychainTestSuite) TestParseSearchListLine() {
-	cases := []struct {
-		line     string
-		expected string
-	}{
-		{
-			line:     `    "/Users/user.name/Library/Keychains/login.keychain-db"`,
-			expected: `/Users/user.name/Library/Keychains/login.keychain-db`,
-		},
-		{
-			line:     `    "/private/var/folders/m1/s05mrl8s4fbfw8zf4hw04tjwh740pl/T/do-the-thing-856917238/do-the-thing.keychain"`,
-			expected: "/private/var/folders/m1/s05mrl8s4fbfw8zf4hw04tjwh740pl/T/do-the-thing-856917238/do-the-thing.keychain",
-		},
-		{
-			line:     "/path/to",
-			expected: "",
-		},
-		{
-			line:     `    /path/to`,
-			expected: "",
-		},
-	}
-
-	for _, c := range cases {
-		s.Run(c.line, func() {
-			// when:
-			res := isSearchListEntry(c.line)
-
-			// then:
-			s.Assert().EqualValues(res, c.expected)
-		})
-	}
-}
+*/
