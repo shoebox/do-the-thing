@@ -4,15 +4,10 @@ import (
 	"context"
 	"dothething/internal/api"
 	"dothething/internal/xcode"
-	"fmt"
 
-	"github.com/fatih/color"
+	"github.com/rs/zerolog/log"
 )
 
-//  # if ProvisionedDevices: !nil & "get-task-allow": true -> development
-//  # if ProvisionedDevices: !nil & "get-task-allow": false -> ad-hoc
-//  # if ProvisionedDevices: nil & "ProvisionsAllDevices": "true" -> enterprise
-//  # if ProvisionedDevices: nil & ProvisionsAllDevices: nil -> app-store
 type actionPackage struct {
 	*api.API
 }
@@ -22,12 +17,12 @@ func NewActionPackage(api *api.API) api.Action {
 }
 
 func (a actionPackage) Run(ctx context.Context) error {
-	xce := xcode.ParseXCodeBuildError(a.pack(ctx))
-	if xce != nil {
-		color.New(color.FgHiRed, color.Bold).Println(xce.Error())
+	err := xcode.ParseXCodeBuildError(a.pack(ctx))
+	if err != nil {
+		log.Err(err)
 	}
 
-	return xce
+	return err
 }
 
 func (a actionPackage) pack(ctx context.Context) error {
@@ -36,14 +31,28 @@ func (a actionPackage) pack(ctx context.Context) error {
 
 	// Resolving signature
 	if err := a.API.SignatureService.Run(ctx); err != nil {
-		fmt.Println("err", err)
 		return err
 	}
 
-	m, err := a.API.ExportOptionService.Compute()
-	fmt.Println("method :::", m, err)
-	/*
-	 */
+	// Compute export options plist
+	if err := a.API.ExportOptionService.Compute(); err != nil {
+		return err
+	}
 
-	return nil
+	// The arguments
+	args := []string{
+		xcode.ActionPackage,
+		xcode.FlagArchivePath, a.API.PathService.Archive(),
+		xcode.FlagExportPath, a.API.PathService.Package(),
+		xcode.FlagExportOptionsPlist, a.API.PathService.ExportPList(),
+		a.API.PathService.ObjRoot(),
+		// a.API.PathService.SymRoot(),
+	}
+
+	cmd, err := a.API.Exec.XCodeCommandContext(ctx, args...)
+	if err != nil {
+		return err
+	}
+
+	return RunCmd(*cmd)
 }
