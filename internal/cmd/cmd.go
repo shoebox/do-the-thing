@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"dothething/internal/api"
+	"fmt"
 	"os"
 	"time"
 
@@ -14,12 +15,11 @@ type CLI interface {
 }
 
 type menu struct {
-	*api.Config
 	*api.API
 }
 
-func New(a *api.API, cfg *api.Config) CLI {
-	return menu{API: a, Config: cfg}
+func New(a *api.API) CLI {
+	return menu{API: a}
 }
 
 func (m menu) Run() error {
@@ -36,17 +36,18 @@ func (m menu) Run() error {
 	}
 
 	app.Flags = []cli.Flag{
-		&cli.PathFlag{Name: "project", Destination: &m.Config.Path},
-		&cli.StringFlag{Name: "buildScheme", Destination: &m.Config.Scheme},
-		&cli.StringFlag{Name: "buildConfiguration", Destination: &m.Config.Configuration},
-		&cli.StringFlag{Name: "target", Destination: &m.Config.Target},
-		&cli.StringFlag{Name: "signatureFilesPath", Destination: &m.Config.CodeSignOption.Path},
-		&cli.StringFlag{Name: "certificatePassword", Destination: &m.Config.CodeSignOption.CertificatePassword},
+		&cli.PathFlag{Name: "project", Destination: &m.API.Config.Path},
+		&cli.StringFlag{Name: "xcodeVersion", Destination: &m.API.Config.XCodeVersion, EnvVars: []string{"XCODE_VERSION"}},
+		&cli.StringFlag{Name: "buildScheme", Destination: &m.API.Config.Scheme},
+		&cli.StringFlag{Name: "buildConfiguration", Destination: &m.API.Config.Configuration},
+		&cli.StringFlag{Name: "target", Destination: &m.API.Config.Target},
+		&cli.StringFlag{Name: "signatureFilesPath", Destination: &m.API.Config.CodeSignOption.Path},
+		&cli.StringFlag{Name: "certificatePassword", Destination: &m.API.Config.CodeSignOption.CertificatePassword},
 	}
 
 	err := app.Run(os.Args)
 	if err != nil {
-		return err
+		return fmt.Errorf("run error  %v", err)
 	}
 
 	return nil
@@ -69,7 +70,7 @@ func (m menu) testCommand(c *cli.Context) error {
 }
 
 func (m menu) runAction(action api.Action) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	return action.Run(ctx)
