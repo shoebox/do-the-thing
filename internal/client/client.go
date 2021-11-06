@@ -13,32 +13,34 @@ import (
 )
 
 // NewAPIClient create a new instance of the client
-func NewAPIClient(config *api.Config) (*api.API, error) {
-	res := api.API{Config: config, Exec: util.NewExecutor()}
-	res.ActionPack = action.NewActionPackage(&res)
-	res.PathService = path.NewPathService(&res)
+func NewAPIClient() (*api.API, error) {
+	a := api.API{Config: &api.Config{}}
+	a.Exec = util.NewExecutor(&a)
 
 	// keychain
-	k, err := keychain.NewKeyChain(&res)
+	k, err := keychain.NewKeyChain(&a)
 	if err != nil {
 		return nil, err
 	}
-	res.Config = config
-	res.KeyChain = k
+	a.KeyChain = k
 
-	res.ExportOptionService = signature.NewExportOptionsService(&res)
-	res.SignatureService = signature.NewSignatureService(&res)
-	res.ActionArchive = action.NewArchive(&res)
-	res.BuildService = xcode.NewService(&res)
-	res.CertificateService = signature.NewCertificateService(&res)
-	res.DestinationService = destination.NewDestinationService(&res)
-	res.FileService = util.NewFileService()
-	res.PlistBuddyService = util.NewPListBuddy(&res)
-	res.ProvisioningService = signature.NewProvisioningService(&res)
-	res.SignatureResolver = signature.NewResolver(&res)
-	res.XcodeListService = xcode.NewXCodeListService(&res)
-	res.XCodeProjectService = project.NewProjectService(&res)
-	res.XcodeSelectService = xcode.NewSelectService(&res)
+	a.ActionArchive = action.NewArchive(&a)
+	a.ActionBuild = action.NewBuild(&a)
+	a.ActionPack = action.NewActionPackage(&a)
+	a.ActionRunTest = action.NewActionRunTest(&a)
 
-	return &res, nil
+	a.BuildService = xcode.NewService(&a)
+	a.CertificateService = signature.NewCertificateService(&a)
+	a.DestinationService = destination.NewDestinationService(&a)
+	a.ExportOptionService = signature.NewExportOptionsService(&a)
+	a.FileService = util.NewFileService()
+	a.PathService = path.NewPathService(&a)
+	a.PlistBuddyService = util.NewPListBuddy(&a)
+	a.ProvisioningService = signature.NewProvisioningService(&a)
+	a.SignatureResolver = signature.NewResolver(&a)
+	a.SignatureService = signature.NewSignatureService(&a)
+	a.XCodeProjectService = project.NewProjectService(&a)
+	a.XcodeListService = xcode.NewXCodeListService(&a)
+	a.XcodeSelectService = xcode.NewSelectService(&a)
+	return &a, nil
 }
