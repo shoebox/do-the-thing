@@ -18,8 +18,8 @@ func RunCmd(cmd api.Cmd) error {
 
 	go func() {
 		f := output.NewFormatter(output.SimpleReporter{})
-		f.Parse(pout)
-		f.Parse(perr)
+		f.Parse(pout, false)
+		f.Parse(perr, true)
 	}()
 
 	//
