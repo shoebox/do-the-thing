@@ -5,7 +5,6 @@ import (
 	"dothething/internal/api"
 	"dothething/internal/xcode"
 
-	"github.com/fatih/color"
 	"github.com/rs/zerolog/log"
 )
 
@@ -18,23 +17,23 @@ type ActionArchive struct {
 }
 
 func (a ActionArchive) Run(ctx context.Context) error {
-	xce := xcode.ParseXCodeBuildError(a.build(ctx))
-	if xce != nil {
-		color.New(color.FgHiRed, color.Bold).Println(xce.Error())
+	err := xcode.ParseXCodeBuildError(a.archive(ctx))
+	if err != nil {
+		log.Err(err)
 	}
 
-	return xce
+	return err
 }
 
-func (a ActionArchive) build(ctx context.Context) error {
+func (a ActionArchive) archive(ctx context.Context) error {
 	log.Info().Msg("Archiving")
+	// defer deletion of the keychain
+	defer a.API.KeyChain.Delete(ctx)
 
+	// Resolving signature configuration
 	if err := a.API.SignatureService.Run(ctx); err != nil {
 		return err
 	}
-
-	// defer deletion of the keychain
-	defer a.API.KeyChain.Delete(ctx)
 
 	// The archiving arguments
 	args := []string{
@@ -45,8 +44,14 @@ func (a ActionArchive) build(ctx context.Context) error {
 		xcode.FlagConfiguration, a.API.Config.Configuration,
 		xcode.FlagArchivePath, a.API.PathService.Archive(),
 		a.API.PathService.ObjRoot(),
-		a.API.PathService.SymRoot(),
+		// a.API.PathService.SymRoot(),
 	}
 
-	return RunCmd(a.API.Exec.CommandContext(ctx, xcode.Cmd, args...))
+	//
+	cmd, err := a.API.Exec.XCodeCommandContext(ctx, args...)
+	if err != nil {
+		return err
+	}
+
+	return RunCmd(*cmd)
 }
