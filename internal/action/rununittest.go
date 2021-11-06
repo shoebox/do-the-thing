@@ -11,12 +11,11 @@ import (
 )
 
 type actionRunTest struct {
-	api.API
-	*api.Config
+	*api.API
 }
 
-func NewActionRun(api api.API, cfg *api.Config) api.Action {
-	return actionRunTest{api, cfg}
+func NewActionRunTest(api *api.API) api.Action {
+	return actionRunTest{api}
 }
 
 func (a actionRunTest) Run(ctx context.Context) error {
@@ -29,10 +28,7 @@ func (a actionRunTest) Run(ctx context.Context) error {
 	// defer deletion of the keychain
 	defer a.API.KeyChain.Delete(ctx)
 
-	// Creating a temp folder to contains the test results
-	outputPath := a.API.PathService.XCResult()
-
-	xce := xcode.ParseXCodeBuildError(a.runXCodebuildTest(ctx, outputPath))
+	xce := xcode.ParseXCodeBuildError(a.runXCodebuildTest(ctx))
 	if xce != nil {
 		color.New(color.FgHiRed, color.Bold).Println(xce.Error())
 	}
@@ -40,17 +36,39 @@ func (a actionRunTest) Run(ctx context.Context) error {
 	return xce
 
 }
-func (a actionRunTest) runXCodebuildTest(ctx context.Context, path string) error {
-	fmt.Println(color.BlueString("Running test on %v (%v)", a.Config.Destination.Name, a.Config.Destination.ID))
+func (a actionRunTest) runXCodebuildTest(ctx context.Context) error {
+	fmt.Println("run tests")
+	// listing possible destinations
+	dd, err := a.API.DestinationService.List(ctx, a.Config.Scheme)
+	if err != nil {
+		return err
+	}
 
-	return RunCmd(a.API.Exec.CommandContext(ctx,
-		xcode.Cmd,
+	// using the last destination for now as a test
+	d := dd[len(dd)-1]
+
+	// Booting the destination
+	if err := a.API.DestinationService.Boot(ctx, d); err != nil {
+		return err
+	}
+
+	defer a.API.DestinationService.ShutDown(ctx, d)
+
+	cmd, err := a.API.Exec.XCodeCommandContext(ctx,
+		xcode.ActionTest,
 		a.API.BuildService.GetArg(),
 		a.API.Config.Path,
-		xcode.ActionTest,
-		xcode.FlagScheme, a.Config.Scheme,
-		xcode.FlagDestination, fmt.Sprintf("id=%s", a.Config.Destination.ID),
-		xcode.FlagResultBundlePath, path,
-		"-showBuildTimingSummary",
-		"CODE_SIGNING_ALLOWED=NO"))
+		xcode.FlagResultBundlePath, a.API.PathService.XCResult(),
+		xcode.FlagDerivedData, a.API.PathService.DerivedData(),
+		xcode.FlagScheme, a.API.Config.Scheme,
+		xcode.FlagDestination, fmt.Sprintf("id=%s", d.ID),
+		xcode.FlagCodeCoverage, "YES",
+	)
+	fmt.Println(cmd, err)
+
+	if err != nil {
+		return err
+	}
+
+	return RunCmd(*cmd)
 }
