@@ -37,13 +37,19 @@ func NewKeyChain(api *api.API) (api.KeyChain, error) {
 
 // Delete will delete the keychain and remove them from the search list
 func (k keychain) Delete(ctx context.Context) error {
-	_, err := k.API.Exec.CommandContext(ctx,
-		SecurityUtil, ActionDeleteKeychain,
-		k.API.PathService.KeyChain()).Output()
+	b, err := k.securityCmd(
+		ctx,
+		ActionDeleteKeychain,
+		[]string{k.API.PathService.KeyChain()},
+	).Output()
 
 	if err != nil {
 		err = KeyChainError{msg: deleteError}
 	}
+
+	log.Info().
+		Bytes("Result", b).
+		Msg("Deletion result")
 
 	return err
 }
@@ -53,15 +59,19 @@ func (k keychain) ImportCertificate(ctx context.Context, filePath, password, com
 	log.Info().
 		Str("FilePath", filePath).
 		Msg("Importing Certificate")
-	_, err := k.API.Exec.CommandContext(ctx,
-		SecurityUtil,
+	b, err := k.securityCmd(
+		ctx,
 		ActionImport,
-		filePath,
-		FlagKeychain, k.API.PathService.KeyChain(), // Specify keychain into which item(s) will be imported.
-		FlagPassphase, password, // Specify the unwrapping passphrase immediately.
-		FlagAppPath, "/usr/bin/codesign", // Specify an application which may access the imported key;
-		FlagNonExtractable).
-		Output()
+		[]string{
+			filePath,
+			FlagKeychain, k.API.PathService.KeyChain(), // Specify keychain into which item(s) will be imported.
+			FlagPassphase, password, // Specify the unwrapping passphrase immediately.
+			FlagAppPath, "/usr/bin/codesign", // Specify an application which may access the imported key;
+			FlagNonExtractable,
+		},
+	).Output()
+
+	log.Info().Bytes("Result", b).Msg("Importation result")
 
 	if err != nil {
 		return CertificateImportError(err)
@@ -73,15 +83,18 @@ func (k keychain) ImportCertificate(ctx context.Context, filePath, password, com
 // setPartitionList :  Sets the "partition list" for a key. The "partition list" is an extra
 // parameter in the ACL which limits access to the key based on an application's code signature.
 func (k keychain) setPartitionList(ctx context.Context, password string) error {
-	b, err := k.API.Exec.CommandContext(ctx,
-		SecurityUtil,
+	log.Debug().Msg("Set partition list")
+	b, err := k.securityCmd(
+		ctx,
 		ActionSetPartitionList,
-		FlagPartitionList, "apple:,apple-tool:,codesign:", // Partition ID
-		"-s",           // Match keys that can sign
-		"-k", password, // Password for keychain
-		"-t", "private", // We are looking for a private key
-		k.API.PathService.KeyChain()).
-		Output()
+		[]string{
+			FlagPartitionList, "apple:,apple-tool:,codesign:", // Partition ID
+			"-s",           // Match keys that can sign
+			"-k", password, // Password for keychain
+			"-t", "private", // We are looking for a private key
+			k.API.PathService.KeyChain(),
+		},
+	).Output()
 
 	log.Info().Msg(string(b))
 
