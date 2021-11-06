@@ -2,7 +2,6 @@ package signature
 
 import (
 	"dothething/internal/api"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -19,6 +18,7 @@ func TestOptionalPlistSuite(t *testing.T) {
 	suite.Run(t, new(exportOptionsPlistSuite))
 }
 
+/*
 func (s *exportOptionsPlistSuite) BeforeTest(suiteName, testName string) {
 	s.API = &api.API{
 		PlistBuddyService: new(api.MockPlistAPI),
@@ -59,3 +59,4 @@ func (s *exportOptionsPlistSuite) TestResolveMethodForProvisioning() {
 		})
 	}
 }
+*/

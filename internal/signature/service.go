@@ -43,7 +43,7 @@ func (s signatureService) Run(ctx context.Context) error {
 	log.Info().Msg("Found configuration")
 	err = s.API.KeyChain.Create(ctx, "dothething")
 	if err != nil {
-		fmt.Println("Failed to create keychain", err)
+		log.Error().AnErr("Error", err).Msg("Failed to create keychain")
 		return err
 	}
 
@@ -55,7 +55,10 @@ func (s signatureService) Run(ctx context.Context) error {
 	for _, e := range cfg {
 		log.Info().Str("Name", e.TargetName).Msg("Configuring target")
 		if err := s.applyTargetConfiguration(ctx, pj, e.TargetName, e.Config); err != nil {
-			fmt.Println("Failed to configure target ::::", err)
+			log.Error().
+				AnErr("Error", err).
+				Str("Target", e.TargetName).
+				Msg("Failed to configure target")
 			return err
 		}
 	}
@@ -124,8 +127,6 @@ func (a signatureService) applyTargetConfiguration(
 		return NewSignatureError(err, ErrorBuildSettingsConfiguration)
 	}
 
-	fmt.Println("Importing certificate :::")
-
 	path, err := filepath.Abs(sc.Cert.FilePath)
 	if err != nil {
 		return NewSignatureError(err, ErrorCertificateImport)
@@ -137,7 +138,6 @@ func (a signatureService) applyTargetConfiguration(
 		a.API.Config.CodeSignOption.CertificatePassword,
 		sc.Cert.Issuer.CommonName,
 	); err != nil {
-		fmt.Println("Erro ::: ", err)
 		return NewSignatureError(err, ErrorCertificateImport)
 	}
 

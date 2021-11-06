@@ -1,14 +1,6 @@
 package signature
 
-import (
-	"context"
-	"dothething/internal/api"
-	"dothething/internal/xcode/pbx"
-	"testing"
-
-	"github.com/stretchr/testify/suite"
-)
-
+/*
 type signatureServiceSuite struct {
 	suite.Suite
 	API     *api.API
@@ -91,3 +83,4 @@ func (s *signatureServiceSuite) TestShouldConfigureDependencies() {
 		}
 	}
 }
+*/

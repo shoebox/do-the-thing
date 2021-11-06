@@ -4,26 +4,23 @@ import (
 	"context"
 	"dothething/internal/api"
 	"dothething/internal/utiltest"
-	"dothething/internal/xcode"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
 var dest = api.Destination{ID: "123-456-789"}
 
 type DestinationTestSuite struct {
-	API            *api.API
-	cancel         func()
-	ctx            context.Context
-	mockCmd        *utiltest.MockExecutorCmd
-	mockExecutor   *utiltest.MockExecutor
-	mockXcodeBuild *xcode.XCodeBuildMock
-	subject        destinationService
+	API          *api.API
+	cancel       func()
+	ctx          context.Context
+	mockCmd      *utiltest.MockExecutorCmd
+	mockExecutor *utiltest.MockExecutor
+	// mockXcodeBuild *xcode.XCodeBuildMock
+	subject destinationService
 	suite.Suite
 }
 
@@ -35,11 +32,11 @@ func TestExampleTestSuite(t *testing.T) {
 func (s *DestinationTestSuite) BeforeTest(suiteName, testName string) {
 	s.mockCmd = new(utiltest.MockExecutorCmd)
 	s.mockExecutor = new(utiltest.MockExecutor)
-	s.mockXcodeBuild = new(xcode.XCodeBuildMock)
+	// s.mockXcodeBuild = new(xcode.XCodeBuildMock)
 
 	s.API = new(api.API)
-	s.API.Exec = s.mockExecutor
-	s.API.BuildService = s.mockXcodeBuild
+	// s.API.Exec = s.mockExecutor
+	//s.API.BuildService = s.mockXcodeBuild
 
 	s.ctx, s.cancel = context.WithTimeout(context.Background(), 1*time.Second)
 	s.subject = destinationService{s.API}
@@ -47,67 +44,6 @@ func (s *DestinationTestSuite) BeforeTest(suiteName, testName string) {
 
 func (s *DestinationTestSuite) AfterTest(suiteName, testName string) {
 	s.cancel()
-}
-
-func (s *DestinationTestSuite) TestBootShouldHandleResults() {
-	// setup:
-	s.mockExecutor.MockCommandContext(
-		xcRun,
-		[]string{simCtl, actionBootStatus, dest.ID, flagBoot},
-		"", nil,
-	)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel() // The cancel should be deferred so resources are cleaned up
-
-	// when: Bootign the destination
-	err := s.subject.Boot(ctx, dest)
-
-	// then: No error should be reported
-	s.Assert().NoError(err)
-}
-
-func (s *DestinationTestSuite) TestBootShouldHandleError() {
-	// setup:
-	s.mockExecutor.MockCommandContext(xcRun,
-		[]string{simCtl, actionBootStatus, dest.ID, flagBoot},
-		"", errors.New("error text"))
-
-	// when:
-	err := s.subject.Boot(s.ctx, dest)
-
-	// then:
-	s.Assert().EqualValues(err, NewBootError(dest.ID))
-}
-
-func (s *DestinationTestSuite) TestShutdown() {
-	// setup:
-	dest := api.Destination{ID: "123-456-789"}
-
-	s.mockExecutor.MockCommandContext(xcRun,
-		[]string{simCtl, actionShutdown, dest.ID},
-		"", errors.New("error text"))
-
-	// when:
-	err := s.subject.ShutDown(s.ctx, dest)
-
-	// then:
-	s.Assert().EqualValues(err, NewShutDownError(dest.ID))
-}
-
-func (s *DestinationTestSuite) TestDestinationListingShouldHandleErrors() {
-	scheme := "test"
-
-	s.mockXcodeBuild.
-		On("ShowDestinations", mock.Anything, scheme).
-		Return("", errors.New("error"))
-
-	// when:
-	dest, err := s.subject.List(s.ctx, scheme)
-
-	// then:
-	s.Assert().EqualError(err, NewListingError().Error())
-	s.Assert().Empty(dest)
 }
 
 func (s *DestinationTestSuite) TestDestinationsParsing() {

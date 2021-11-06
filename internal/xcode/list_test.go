@@ -68,6 +68,7 @@ func (s *XCodeListTestSuite) TestResolveInstall() {
 		{
 			i: &api.Install{
 				Path:          "/path/to/project.xcodeproj",
+				DevPath:       "/path/to/project.xcodeproj/Contents/Developer",
 				BundleVersion: "10.0.1",
 				Version:       "10.0.1-snapshot",
 			},
