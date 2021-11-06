@@ -5,6 +5,7 @@ import (
 	"dothething/internal/api"
 	"dothething/internal/xcode/pbx"
 	"fmt"
+	"path/filepath"
 
 	"github.com/rs/zerolog/log"
 )
@@ -32,7 +33,6 @@ func (s signatureService) GetConfiguration() *[]api.TargetSignatureConfig {
 }
 
 func (s signatureService) Run(ctx context.Context) error {
-	log.Info().Msg("Resolving signature configuration")
 	// Parsing project
 	pj, err := s.API.XCodeProjectService.Parse(ctx)
 	if err != nil {
@@ -40,16 +40,22 @@ func (s signatureService) Run(ctx context.Context) error {
 	}
 
 	// Found configuration, installing it into a temporary keychain
-	if err := s.API.KeyChain.Create(ctx, "dothething"); err != nil {
+	log.Info().Msg("Found configuration")
+	err = s.API.KeyChain.Create(ctx, "dothething")
+	if err != nil {
+		fmt.Println("Failed to create keychain", err)
 		return err
 	}
 
+	// Resolving for target
 	if err = s.forTarget(ctx, s.API.Config.Target, pj); err != nil {
 		return err
 	}
 
 	for _, e := range cfg {
+		log.Info().Str("Name", e.TargetName).Msg("Configuring target")
 		if err := s.applyTargetConfiguration(ctx, pj, e.TargetName, e.Config); err != nil {
+			fmt.Println("Failed to configure target ::::", err)
 			return err
 		}
 	}
@@ -118,11 +124,20 @@ func (a signatureService) applyTargetConfiguration(
 		return NewSignatureError(err, ErrorBuildSettingsConfiguration)
 	}
 
+	fmt.Println("Importing certificate :::")
+
+	path, err := filepath.Abs(sc.Cert.FilePath)
+	if err != nil {
+		return NewSignatureError(err, ErrorCertificateImport)
+	}
+
 	if err = a.API.KeyChain.ImportCertificate(
 		ctx,
-		sc.Cert.FilePath,
+		path,
 		a.API.Config.CodeSignOption.CertificatePassword,
+		sc.Cert.Issuer.CommonName,
 	); err != nil {
+		fmt.Println("Erro ::: ", err)
 		return NewSignatureError(err, ErrorCertificateImport)
 	}
 
@@ -158,10 +173,11 @@ func (s signatureService) forTarget(
 	t string,
 	p api.Project,
 ) error {
+	log.Info().Str("Target", t).Msg("Resolving for target")
 	// Resolving target by name
 	nt, err := p.Pbx.FindTargetByName(t)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to find target %v (%v)", t, err)
 	}
 
 	if err = s.configureDependencies(nt, func(name string) error {
@@ -173,15 +189,16 @@ func (s signatureService) forTarget(
 	// Resolving the build configuration for the target
 	bc, err := nt.BuildConfigurationList.FindConfiguration(s.API.Config.Configuration)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to find build configuration %v (%v)", s.API.Config.Configuration, err)
 	}
 
 	// Resolving signature configuration for the bundle identifier
+	bundleID := bc.BuildSettings["PRODUCT_BUNDLE_IDENTIFIER"]
 	sc, err := s.API.
 		SignatureResolver.
-		Resolve(ctx, bc.BuildSettings["PRODUCT_BUNDLE_IDENTIFIER"], nt.ProductType)
+		Resolve(ctx, bundleID, nt.ProductType)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to resolve signature configuration for the bundle identifier \"%v\"", bundleID)
 	}
 
 	cfg = append(cfg, api.TargetSignatureConfig{
