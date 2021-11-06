@@ -9,6 +9,9 @@ import (
 type Executor interface {
 	// CommandContext allow to execute a command with Context
 	CommandContext(ctx context.Context, cmd string, args ...string) Cmd
+
+	// XCodeCommandContext allow to execute a xcode command with Context
+	XCodeCommandContext(ctx context.Context, args ...string) (*Cmd, error)
 }
 
 // Cmd is an interface that wrap the Cmd action from os/exec in a more friendly API
@@ -46,4 +49,3 @@ type Cmd interface {
 	// terminate after 10 seconds.
 	Stop()
 }
-
