@@ -9,6 +9,7 @@ type ListService interface {
 
 // Install xcode installation definition
 type Install struct {
+	DevPath       string
 	Path          string
 	BundleVersion string
 	Version       string
@@ -16,7 +17,7 @@ type Install struct {
 
 // SelectService The XCode version selection service interface
 type SelectService interface {
-	Find(ctx context.Context, version string) (*Install, error)
+	Find(ctx context.Context) (*Install, error)
 }
 
 // XCodeBuildService service definition
