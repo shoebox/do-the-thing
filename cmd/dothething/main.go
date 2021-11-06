@@ -1,7 +1,6 @@
 package main
 
 import (
-	"dothething/internal/api"
 	"dothething/internal/client"
 	"dothething/internal/cmd"
 	"os"
@@ -10,21 +9,18 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var cfg *api.Config
-
 func main() {
 	// logger configuration
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
-	// intializing the client
-	cfg = &api.Config{}
-	clientAPI, err := client.NewAPIClient(cfg)
+	// initializing the client
+	clientAPI, err := client.NewAPIClient()
 	if err != nil {
 		log.Error().Err(err)
 	}
 
-	err = cmd.New(clientAPI, cfg).Run()
+	err = cmd.New(clientAPI).Run()
 	if err != nil {
 		log.Error().Err(err)
 	}
