@@ -1,9 +1,13 @@
 package signature
 
 import (
+	"bytes"
 	"dothething/internal/api"
 	"errors"
-	"fmt"
+	"os"
+	"path/filepath"
+
+	"howett.net/plist"
 )
 
 type exportOptionsService struct {
@@ -16,38 +20,95 @@ func NewExportOptionsService(api *api.API) exportOptionsService {
 	return exportOptionsService{API: api}
 }
 
-func (s exportOptionsService) Compute() (string, error) {
-	var res api.ExportOptions
-	var err error
+func (s exportOptionsService) createExportOptions() (*api.ExportOptions, error) {
+	// resolve xcode target
+	tgt, err := s.resolveTarget()
+	if err != nil {
+		return nil, NewSignatureError(err, ErrorExportOptions)
+	}
 
+	// resulting export options struct
+	var res = api.ExportOptions{
+		SigningStyle:        "manual",
+		SigningCertificate:  tgt.Config.Cert.Issuer.CommonName,
+		ProvisioningProfile: s.resolveProvisionings(),
+		TeamID:              tgt.Config.ProvisioningProfile.Entitlements.TeamID,
+	}
+
+	return &res, err
+}
+
+func (s exportOptionsService) Compute() error {
 	// resoling the target configuration
 	s.cfg = s.API.SignatureService.GetConfiguration()
-	if err := s.resolveTarget(); err != nil {
-		return "", err
+
+	// create basic unpopulated export options object
+	res, err := s.createExportOptions()
+	if err != nil {
+		return err
 	}
 
 	// resolving the method for the target
 	if res.Method, err = s.resolveMethod(); err != nil {
-		return "", err
+		return NewSignatureError(err, ErrorExportOptions)
 	}
 
-	// resovling provisionings
-	res.ProvisioningProfile = s.resolveProvisionings()
+	// enabled by default for AppStore signing method
+	if res.Method == "app-store" {
+		res.UploadBitCode = true
+		res.UploadSymbols = true
+	} else {
+		// TODO: configurable via CLI
+	}
 
-	fmt.Println("res :::", res)
+	// encoding the struct to plist format
+	var buf bytes.Buffer
+	encoder := plist.NewEncoder(&buf)
+	if err := encoder.Encode(res); err != nil {
+		return NewSignatureError(err, ErrorExportOptions)
+	}
 
-	return "", nil
+	// and exporting it to the destination file
+	if err := s.exportToFile(&buf); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (s exportOptionsService) resolveTarget() error {
-	for _, e := range *s.cfg {
-		if e.TargetName == s.API.Config.Target {
-			s.tgt = e
-			return nil
+func (s exportOptionsService) exportToFile(buf *bytes.Buffer) error {
+	// create
+	dir := filepath.Dir(s.API.PathService.ExportPList())
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, os.ModeSticky|os.ModePerm); err != nil {
+			return NewSignatureError(err, ErrorExportOptions)
 		}
 	}
 
-	return errors.New("not found")
+	// creating the output file
+	f, err := os.Create(s.API.PathService.ExportPList())
+	if err != nil {
+		return NewSignatureError(err, ErrorExportOptions)
+	}
+	defer f.Close()
+
+	// Writing the buffer to the output file
+	if _, err := buf.WriteTo(f); err != nil {
+		return NewSignatureError(err, ErrorExportOptions)
+	}
+
+	return nil
+}
+
+func (s exportOptionsService) resolveTarget() (*api.TargetSignatureConfig, error) {
+	for _, e := range *s.cfg {
+		if e.TargetName == s.API.Config.Target {
+			s.tgt = e
+			return &e, nil
+		}
+	}
+
+	return nil, errors.New("not found")
 }
 
 func (s exportOptionsService) resolveMethod() (string, error) {
@@ -86,7 +147,4 @@ func (s exportOptionsService) resolveMethodForProvisioning(p *api.ProvisioningPr
 			return "app-store"
 		}
 	}
-}
-
-func (s exportOptionsService) resolveProvisioningUUID() {
 }
