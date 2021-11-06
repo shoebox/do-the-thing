@@ -59,7 +59,7 @@ func (s *pathServiceSuite) TestKeyChain() {
 
 func (s *pathServiceSuite) TestExportPlist() {
 	// when:
-	p := s.subject.ExportPlist()
+	p := s.subject.ExportPList()
 
 	// then:
 	s.Assert().Equal("/path/to/Build/targetName-schemeName-configName-export.plist", p)
@@ -76,7 +76,6 @@ func (s *pathServiceSuite) TestObjRoot() {
 func (s *pathServiceSuite) TestSymRoot() {
 	// when:
 	p := s.subject.SymRoot()
-
 	// then:
 	s.Assert().Equal("SYMROOT=/path/to/Build/sym", p)
 }
@@ -87,4 +86,30 @@ func (s *pathServiceSuite) TestXCResult() {
 
 	// then:
 	s.Assert().Equal("/path/to/Build/targetName-schemeName-configName.xcresult", p)
+}
+
+func (s *pathServiceSuite) TestXCodeProject() {
+	cases := []struct {
+		Path     string
+		Expected string
+	}{
+		{
+			Path:     "/path/to/project.xcodeproj",
+			Expected: "/path/to/project.xcodeproj",
+		},
+		{
+			Path:     "/path/to/project.xcworkspace",
+			Expected: "/path/to/project.xcodeproj",
+		},
+	}
+
+	for _, c := range cases {
+		s.API.Config.Path = c.Path
+
+		// when:
+		res := s.subject.XCodeProject()
+
+		// then:
+		s.Assert().EqualValues(c.Expected, res)
+	}
 }
