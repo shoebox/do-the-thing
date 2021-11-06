@@ -64,14 +64,14 @@ type SignatureConfiguration struct {
 type ExportOptions struct {
 	Method              string            `plist:"method"`
 	TeamID              string            `plist:"teamID"`
-	UploadBitCode       *bool             `plist:"uploadBitCode"`
-	CompileBitCode      *bool             `plist:"compileBitCode"`
-	UploadSymbols       *bool             `plist:"uploadSymbols"`
+	UploadBitCode       bool              `plist:"uploadBitCode"`
+	CompileBitCode      bool              `plist:"compileBitCode"`
+	UploadSymbols       bool              `plist:"uploadSymbols"`
 	SigningStyle        string            `plist:"signingStyle"`
 	SigningCertificate  string            `plist:"signingCertificate"`
 	ProvisioningProfile map[string]string `plist:"provisioningProfiles"`
 }
 
 type ExportOptionsService interface {
-	Compute() (string, error)
+	Compute() error
 }
