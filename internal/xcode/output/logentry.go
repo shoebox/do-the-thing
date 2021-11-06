@@ -16,6 +16,9 @@ type LogEntry struct {
 	Name              string
 	Path              string
 	Project           string
+	SigningIdentity   string
+	ProvisioningName  string
+	ProvisioningID    string
 	SourceFile        string
 	Status            string
 	Target            string
