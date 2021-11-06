@@ -2,75 +2,43 @@ package util
 
 import (
 	"context"
+	"dothething/internal/api"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
+type MockAPI struct {
+	mock.Mock
+	api.API
+	XcodeSelectService MockSelectService
+}
+
+type MockSelectService struct {
+	mock.Mock
+}
+
+func (m MockSelectService) Find(ctx context.Context) (*api.Install, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*api.Install), args.Error(1)
+}
+
 func TestRun(t *testing.T) {
-	// setup:
-	exec := NewExecutor()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// when:
-	b, err := exec.CommandContext(ctx, "echo", "toto", "tata").Output()
-
-	// then:
-	assert.EqualValues(t, string(b), "toto tata\n")
-	assert.NoError(t, err)
-}
-
-func TestTimeout(t *testing.T) {
 	// setup:
-	exec := NewExecutor()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
-	defer cancel()
+	install := &api.Install{Path: "/path/to/xcode"}
+	service := new(MockSelectService)
+	service.On("Find", mock.Anything).Return(install, nil)
 
 	// when:
-	err := exec.CommandContext(ctx, "sleep", "2").Run()
-
-	// then:
-	assert.EqualValues(t, err, context.DeadlineExceeded)
-}
-
-func TestSetEnv(t *testing.T) {
-	// setup:
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	ex := NewExecutor()
-
-	// when:
-	out, err := ex.CommandContext(ctx, "/bin/sh", "-c", "echo $TESTENVVAR").CombinedOutput()
+	e := NewExecutor(&api.API{XcodeSelectService: service})
+	cmd, err := e.XCodeCommandContext(ctx, "hello", "world")
 
 	// then:
 	assert.NoError(t, err)
-	assert.EqualValues(t, out, "\n")
-
-	// when:
-	cmd := ex.CommandContext(ctx, "/bin/sh", "-c", "echo $TESTENVVAR")
-	cmd.SetEnv([]string{"TESTENVVAR=xcode"})
-	out, err = cmd.CombinedOutput()
-
-	assert.NoError(t, err)
-	assert.EqualValues(t, string(out), "xcode\n")
-}
-
-func TestStopBeforeStart(t *testing.T) {
-	exec := NewExecutor()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
-	defer cancel()
-
-	// when:
-	cmd := exec.CommandContext(ctx, "sleep", "2")
-
-	// no panic calling Stop before calling Run
-	cmd.Stop()
-
-	err := cmd.Run()
-	assert.EqualError(t, err, "context deadline exceeded")
-
-	// no panic calling Stop after command is done
-	cmd.Stop()
+	w := (*cmd).(*cmdWrapper)
+	assert.Equal(t, "DEVELOPER_DIR", w.Env[0])
 }

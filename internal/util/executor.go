@@ -1,9 +1,9 @@
+// Package util provide low level util function to interact with the system
 package util
 
 import (
 	"context"
 	"dothething/internal/api"
-	"fmt"
 	"os/exec"
 
 	"github.com/rs/zerolog/log"
@@ -19,7 +19,7 @@ func NewExecutor(api *api.API) api.Executor {
 }
 
 // CommandContext run a command with context
-func (executor *executor) CommandContext(ctx context.Context, cmd string, args ...string) api.Cmd {
+func (e *executor) CommandContext(ctx context.Context, cmd string, args ...string) api.Cmd {
 	log.Info().
 		Str("Cmd", cmd).
 		Strs("Args", args).
@@ -29,19 +29,18 @@ func (executor *executor) CommandContext(ctx context.Context, cmd string, args .
 }
 
 // CommandContext run a command with context
-func (a *executor) XCodeCommandContext(ctx context.Context, args ...string) (*api.Cmd, error) {
+func (e *executor) XCodeCommandContext(ctx context.Context, args ...string) (*api.Cmd, error) {
 	log.Info().
 		Strs("Args", args).
 		Msg("Running XCode command with context")
 
-	// selecting the right version of XCode
-	i, err := a.API.XcodeSelectService.Find(ctx)
+	i, err := e.API.XcodeSelectService.Find(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to resolve the XCode installation (%v)", err)
+		return nil, err
 	}
 
 	// executing the command
-	cmd := a.CommandContext(ctx, "xcodebuild", args...)
+	cmd := e.CommandContext(ctx, "xcodebuild", args...)
 	cmd.SetEnv([]string{"DEVELOPER_DIR", i.DevPath})
 
 	return &cmd, nil
