@@ -9,13 +9,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func NewBuild(api api.API, cfg *api.Config) api.Action {
-	return actionBuild{api, cfg}
+func NewBuild(api *api.API) api.Action {
+	return actionBuild{api}
 }
 
 type actionBuild struct {
-	api.API
-	*api.Config
+	*api.API
 }
 
 func (a actionBuild) Run(ctx context.Context) error {
@@ -29,12 +28,19 @@ func (a actionBuild) Run(ctx context.Context) error {
 
 func (a actionBuild) build(ctx context.Context) error {
 	log.Info().Msg("Building")
-	return RunCmd(a.API.Exec.CommandContext(ctx,
-		xcode.Cmd,
+	args := []string{
 		a.API.BuildService.GetArg(),
-		a.Config.Path,
+		a.API.Config.Path,
 		xcode.ActionBuild,
-		xcode.FlagScheme, a.Config.Scheme,
+		xcode.FlagScheme, a.API.Config.Scheme,
 		"-showBuildTimingSummary",
-		"CODE_SIGNING_ALLOWED=NO"))
+		"CODE_SIGNING_ALLOWED=NO",
+	}
+
+	cmd, err := a.API.Exec.XCodeCommandContext(ctx, args...)
+	if err != nil {
+		return err
+	}
+
+	return RunCmd(*cmd)
 }
