@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
+	"github.com/rs/zerolog/log"
 )
 
 type formatter struct {
@@ -16,20 +17,30 @@ func NewFormatter(r reporter) formatter {
 	return formatter{m: NewMatcher(r)}
 }
 
-func (f formatter) Parse(r io.Reader) {
+func (frm formatter) Parse(r io.Reader, errType bool) {
 	entry := LogEntry{}
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		txt := scanner.Text()
-		// fmt.Println(txt)
-		for _, matcher := range f.m {
-			b, m := matcher.Match(strings.ReplaceAll(txt, `\ `, ""))
-			if b {
-				if err := mapstructure.Decode(m, &entry); err == nil {
+		log.Debug().Msg(txt)
+		var found bool
+		for _, matcher := range frm.m {
+			match, m := matcher.Match(strings.ReplaceAll(txt, `\ `, ""))
+			if match {
+				err := mapstructure.Decode(m, &entry)
+
+				if err == nil {
 					matcher.logfunc(entry)
 					break
 				}
+
+				found = true
 			}
+		}
+
+		if !found && errType {
+			// fmt.Println("txt :::", txt)
+			log.Error().Msg(txt)
 		}
 	}
 }

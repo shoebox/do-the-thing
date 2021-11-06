@@ -4,6 +4,7 @@ func NewMatcher(reporter reporter) []matcherEntry {
 	return []matcherEntry{
 		createMatcherEntry(reporter.BuildTimeSummary, `^(?P<Name>(\w+))\s\((?P<Count>\d+)\stask(?:s)?\)\s\|\s(?P<Time>[\d.]+)\s(?P<Unit>\w+)$`),
 		createMatcherEntry(reporter.CleanTarget, `(?i)^=== Clean Target\s(?P<Target>.*)\sOf Project\s(?P<Project>.*)\sWith Configuration\s(?P<Configuration>.*)\s===`),
+		createMatcherEntry(reporter.CodeSignTarget, `^CodeSign\s(?P<FilePath>(?:\\ |[^ ])*)([\s\S]*)Signing Identity:\s+\"(?P<SigningIdentity>[^"]+)\"\nProvisioning Profile:\s+\"(?P<ProvisioningName>[^"]+)\"\n\s+\((?P<ProvisioningID>[^)]+)\)`),
 		createMatcherEntry(reporter.CodeSign, `^CodeSign\s(?P<FilePath>(?:\\ |[^ ])*)`),
 		createMatcherEntry(reporter.CodeSign, `^CodeSign\s(?P<FilePath>(?:\\ |[^ ])*.framework)\/Versions`),
 		createMatcherEntry(reporter.BuildAggregate, `(?i)^=== Build Aggregate Target\s(?P<Target>.*)\sOf Project\s(?P<Project>.*)\sWith.*Configuration\s(?P<Configuration>.*)\s===`),

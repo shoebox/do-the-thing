@@ -18,6 +18,7 @@ func (m *MockListener) BuildTimeSummary(e LogEntry)        { m.Called(e) }
 func (m *MockListener) CleanRemove(e LogEntry)             { m.Called(e) }
 func (m *MockListener) CleanTarget(e LogEntry)             { m.Called(e) }
 func (m *MockListener) CodeSign(e LogEntry)                { m.Called(e) }
+func (m *MockListener) CodeSignTarget(e LogEntry)          { m.Called(e) }
 func (m *MockListener) CompileClang(e LogEntry)            { m.Called(e) }
 func (m *MockListener) CompileCommand(e LogEntry)          { m.Called(e) }
 func (m *MockListener) CompileStoryboard(e LogEntry)       { m.Called(e) }
@@ -104,6 +105,21 @@ func TestParse(t *testing.T) {
 			d: "CodeSign build/Release/CocoaChipCore.framework/Versions/A",
 			e: LogEntry{
 				FilePath: "build/Release/CocoaChipCore.framework/Versions/A",
+			},
+		},
+		{
+			m: "CodeSignTarget",
+			d: `CodeSign build/Release/CocoaChip.app
+    cd /Users/johann.martinache/Desktop/tmp/BookStore-iOS
+    export CODESIGN_ALLOCATE\=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/codesign_allocate
+
+Signing Identity:     "iPhone developer: Self signer"
+Provisioning Profile: "Test SelfSigned"
+                      (345456e6-dcb3-4605-b57d-85b18a3670c1)`,
+			e: LogEntry{
+				FilePath:        "build/Release/CocoaChip.app",
+				SigningIdentity: "iPhone developer: Self signer",
+				ProvisioningID:  "345456e6-dcb3-4605-b57d-85b18a3670c1",
 			},
 		},
 		{
@@ -354,7 +370,7 @@ func TestParse(t *testing.T) {
 			m := NewFormatter(l)
 
 			// when:
-			m.Parse(strings.NewReader(c.d))
+			m.Parse(strings.NewReader(c.d), false)
 
 			// then:
 			l.AssertExpectations(t)

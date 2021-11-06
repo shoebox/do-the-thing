@@ -59,20 +59,23 @@ func (s SimpleReporter) FormatCheckDependencies(e LogEntry) {}
 func (s SimpleReporter) CleanRemove(e LogEntry)             { logPhase("CLEANING", "", "") }
 func (s SimpleReporter) CleanTarget(e LogEntry)             { logPhase("CLEANING", e.Target, e.Project) }
 func (s SimpleReporter) CodeSign(e LogEntry)                { logPhase("CODESIGN", e.FileName, "") }
-func (s SimpleReporter) CompileClang(e LogEntry)            { logProgress("COMPILING", e.FileName, "") }
-func (s SimpleReporter) CompileCommand(e LogEntry)          { logProgress("COMPILING", e.FileName, "") }
-func (s SimpleReporter) CompileXIB(e LogEntry)              { logProgress("COMPILING", "xib", e.FileName) }
-func (s SimpleReporter) CompileStoryboard(e LogEntry)       { logProgress("COMPILING", e.FileName, "") }
-func (s SimpleReporter) CopyHeader(e LogEntry)              {}
-func (s SimpleReporter) Copy(e LogEntry)                    {}
-func (s SimpleReporter) Linking(e LogEntry)                 {}
-func (s SimpleReporter) GenerateDSym(e LogEntry)            { logPhase("GENERATE DSYM", e.FileName, "") }
-func (s SimpleReporter) LibTool(e LogEntry)                 { logPhase("LIBTOOL", e.FileName, "") }
-func (s SimpleReporter) PhaseSucceeded(e LogEntry)          { logPhase("PHASE", e.Name, "completed") }
-func (s SimpleReporter) PhaseScriptExecution(e LogEntry)    { logPhase("SCRIPT", e.Name, "") }
-func (s SimpleReporter) RunningShellCommand(e LogEntry)     {}
-func (s SimpleReporter) TestCasePassed(e LogEntry)          { logSuccess("TEST PASSED", e.TestCase, e.Time) }
-func (s SimpleReporter) TestFailing(e LogEntry)             { logError("TEST FAILED", e.FileName, "") }
+func (s SimpleReporter) CodeSignTarget(e LogEntry) {
+	logPhase("CODESIGN", e.FileName, fmt.Sprintf("%v %v (%v)", e.SigningIdentity, e.ProvisioningName, e.ProvisioningID))
+}
+func (s SimpleReporter) CompileClang(e LogEntry)         { logProgress("COMPILING", e.FileName, "") }
+func (s SimpleReporter) CompileCommand(e LogEntry)       { logProgress("COMPILING", e.FileName, "") }
+func (s SimpleReporter) CompileXIB(e LogEntry)           { logProgress("COMPILING", "xib", e.FileName) }
+func (s SimpleReporter) CompileStoryboard(e LogEntry)    { logProgress("COMPILING", e.FileName, "") }
+func (s SimpleReporter) CopyHeader(e LogEntry)           {}
+func (s SimpleReporter) Copy(e LogEntry)                 {}
+func (s SimpleReporter) Linking(e LogEntry)              {}
+func (s SimpleReporter) GenerateDSym(e LogEntry)         { logPhase("GENERATE DSYM", e.FileName, "") }
+func (s SimpleReporter) LibTool(e LogEntry)              { logPhase("LIBTOOL", e.FileName, "") }
+func (s SimpleReporter) PhaseSucceeded(e LogEntry)       { logPhase("PHASE", e.Name, "completed") }
+func (s SimpleReporter) PhaseScriptExecution(e LogEntry) { logPhase("SCRIPT", e.Name, "") }
+func (s SimpleReporter) RunningShellCommand(e LogEntry)  {}
+func (s SimpleReporter) TestCasePassed(e LogEntry)       { logSuccess("TEST PASSED", e.TestCase, e.Time) }
+func (s SimpleReporter) TestFailing(e LogEntry)          { logError("TEST FAILED", e.FileName, "") }
 func (s SimpleReporter) TestCase(e LogEntry) {
 	if e.Status == "passed" {
 		logSuccess("TEST PASSED", e.TestCase, e.Time)

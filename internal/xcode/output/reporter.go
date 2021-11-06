@@ -13,6 +13,7 @@ type reporter interface {
 	CleanRemove(e LogEntry)
 	CleanTarget(e LogEntry)
 	CodeSign(e LogEntry)
+	CodeSignTarget(e LogEntry)
 	CompileStoryboard(e LogEntry)
 	CompileXIB(e LogEntry)
 	CopyHeader(e LogEntry)
