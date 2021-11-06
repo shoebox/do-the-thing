@@ -6,6 +6,7 @@ import (
 	"context"
 	"dothething/internal/api"
 	"dothething/internal/util"
+	"fmt"
 	"io"
 	"path/filepath"
 
@@ -99,7 +100,12 @@ func (s listService) resolveInstall(path string, r io.ReadSeeker) (*api.Install,
 		return nil, err
 	}
 
-	return &api.Install{Path: path, Version: info.Version, BundleVersion: info.BundleVersion}, nil
+	return &api.Install{
+		DevPath:       fmt.Sprintf("%v/Contents/Developer", path),
+		Path:          path,
+		Version:       info.Version,
+		BundleVersion: info.BundleVersion,
+	}, nil
 }
 
 type infoPlist struct {

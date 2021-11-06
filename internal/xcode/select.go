@@ -3,21 +3,21 @@ package xcode
 import (
 	"context"
 	"dothething/internal/api"
-	"errors"
+	"fmt"
 	"sort"
 
 	"github.com/blang/semver"
-	logr "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 var (
 	// ErrMatchNotFound No match found on the system
-	ErrMatchNotFound = errors.New("XCode match not found")
+	ErrMatchNotFound = "XCode match not found"
 
 	// ErrInvalidVersion the required vesion format is invalid
-	ErrInvalidVersion = errors.New("Invalid version")
+	ErrInvalidVersion = "Invalid version"
 
-	ErrParsing = errors.New("Failed to parse required version")
+	ErrParsing = "Failed to parse required version"
 )
 
 // selectService The XCode version selection service struct
@@ -29,25 +29,31 @@ func NewSelectService(api *api.API) api.SelectService {
 }
 
 // Find allow to resolve a XCode install by required vesion
-func (s selectService) Find(ctx context.Context, req string) (*api.Install, error) {
-	r, err := semver.ParseRange(req)
+func (s selectService) Find(ctx context.Context) (*api.Install, error) {
+	log.Info().
+		Str("Requirement", s.API.Config.XCodeVersion).
+		Msg("Finding XCode installation")
+
+	r, err := semver.ParseRange(s.API.Config.XCodeVersion)
 	if err != nil {
-		return nil, ErrParsing
+		fmt.Println("err :::", err)
+		return nil, fmt.Errorf("%v (%v)", ErrParsing, err)
 	}
+
 
 	// Find a equal match
 	target, err := s.findMatch(ctx, r, s.isMatchingRequirement)
 
 	// In case of no match found
 	if target == nil || err != nil {
-		return nil, ErrMatchNotFound
+		return nil, fmt.Errorf("%v (%v)", ErrMatchNotFound, err)
 	}
 
 	return target, nil
 }
 
 func (s *selectService) isMatchingRequirement(i *api.Install, r semver.Range) (bool, error) {
-	v, err := semver.Parse(i.Version)
+	v, err := semver.ParseTolerant(i.Version)
 	if err != nil {
 		return false, err
 	}
@@ -63,15 +69,16 @@ func (s *selectService) findMatch(
 	// Resolve the list of candidates
 	list, err := s.API.XcodeListService.List(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to list system XCode installations (%v)", err)
 	}
 
 	// Iterate on installs
 	var installs []*api.Install
 	for _, install := range list {
 		res, err := valid(install, r)
+		fmt.Println("res,", res, err)
 		if err != nil {
-			logr.Error(err)
+			log.Err(err)
 			continue
 		}
 
@@ -85,7 +92,7 @@ func (s *selectService) findMatch(
 
 	// In case of no candidates
 	if len(installs) == 0 {
-		return nil, ErrMatchNotFound
+		return nil, fmt.Errorf("%v", ErrMatchNotFound)
 	}
 
 	return installs[0], nil

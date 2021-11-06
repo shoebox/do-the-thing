@@ -7,12 +7,19 @@ import (
 )
 
 const (
-	ActionArchive           = "archive"                           // ActionArchive
-	ActionBuild             = "build"                             // ActionBuild
-	ActionClean             = "clean"                             // ActionClean Remove build products and intermediate files from the build root
-	ActionTest              = "test"                              // ActionTest Test a scheme from the build root
-	Cmd                     = "xcodebuild"                        // XCodeBuild executable
-	FlagDestination         = "-destination"                      // FlagDestination destination specifier describing the device (or devices) to use as a destination
+	ActionArchive           = "archive"        // ActionArchive
+	ActionBuild             = "build"          // ActionBuild
+	ActionClean             = "clean"          // ActionClean Remove build products and intermediate files from the build root
+	ActionPackage           = "-exportArchive" // ActionPackage
+	ActionTest              = "test"           // ActionTest Test a scheme from the build root
+	Cmd                     = "xcodebuild"     // XCodeBuild executable
+	FlagArchivePath         = "-archivePath"
+	FlagCodeCoverage        = "-enableCodeCoverage"
+	FlagConfiguration       = "-configuration"
+	FlagDerivedData         = "-derivedDataPath"
+	FlagDestination         = "-destination" // FlagDestination destination specifier describing the device (or devices) to use as a destination
+	FlagExportOptionsPlist  = "-exportOptionsPlist"
+	FlagExportPath          = "-exportPath"
 	FlagJSON                = "-json"                             // FlagJSON
 	FlagList                = "-list"                             // FlagList list
 	FlagParallelTesting     = "-parallel-testing-enabled"         // FlagParallelTesting
@@ -21,10 +28,7 @@ const (
 	FlagResultBundlePath    = "-resultBundlePath"                 // FlagResultBundlePath Writes a bundle to the specified path with results from performing an action on a scheme in a workspace
 	FlagScheme              = "-scheme"                           // FlagScheme Build the scheme specified by scheme name
 	FlagShowDestinations    = "-showdestinations"                 // FlagShowDestinations Lists the valid destinations for a project or workspace and scheme.
-	FlagConfiguration       = "-configuration"
-	FlagWorkspace           = "-workspace" // FlagWorkspace Build the designated workspace
-	FlagArchivePath         = "-archivePath"
-	FlagExportPath          = "-exportPath"
+	FlagWorkspace           = "-workspace"                        // FlagWorkspace Build the designated workspace
 )
 
 type xcodeBuildService struct {

@@ -93,7 +93,7 @@ func (s projectService) decodeProject(b []byte) (pbx.PBXProject, error) {
 }
 
 func (s projectService) resolvePbxProj() ([]byte, error) {
-	path, err := filepath.Abs(s.API.Config.Path + "/project.pbxproj")
+	path, err := filepath.Abs(s.API.PathService.XCodeProject() + "/project.pbxproj")
 	if err != nil {
 		return []byte{}, err
 	}
