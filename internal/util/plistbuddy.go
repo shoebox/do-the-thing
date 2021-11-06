@@ -28,7 +28,8 @@ func (p plistBuddy) AddStringValue(ctx context.Context, objectId string, path st
 		buddy,
 		"-c",
 		fmt.Sprintf("%v string %v", p.computePath("Add", objectId, path, value), value),
-		fmt.Sprintf("%v/project.pbxproj", p.Config.Path)).Run()
+		p.API.PathService.PBXProj(),
+	).Run()
 }
 
 func (p plistBuddy) SetStringValue(ctx context.Context, objectId string, path string, value string) error {
@@ -37,9 +38,5 @@ func (p plistBuddy) SetStringValue(ctx context.Context, objectId string, path st
 		path,
 		value)
 
-	return p.API.Exec.CommandContext(ctx,
-		buddy,
-		"-c",
-		action,
-		fmt.Sprintf("%v/project.pbxproj", p.Config.Path)).Run()
+	return p.API.Exec.CommandContext(ctx, buddy, "-c", action, p.API.PathService.PBXProj()).Run()
 }
