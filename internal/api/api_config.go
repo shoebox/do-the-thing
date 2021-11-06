@@ -8,6 +8,7 @@ type Config struct {
 	CodeSign       bool
 	CodeSignOption SignConfig
 	Target         string
+	XCodeVersion   string
 }
 
 type SignConfig struct {
