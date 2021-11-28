@@ -42,11 +42,11 @@ type ProvisioningProfile struct {
 
 // Entitlements provisioning entitlements definition
 type Entitlements struct {
-	AccessGroup string `json:"keychain-access-groups"`
-	Aps         string `json:"aps-environment"`
-	AppID       string `plist:"application-identifier"`
-	TeamID      string `plist:"com.apple.developer.team-identifier"`
-	GetAskAllow bool   `plist:"get-task-allow"`
+	AccessGroup  string `json:"keychain-access-groups"`
+	Aps          string `json:"aps-environment"`
+	AppID        string `plist:"application-identifier"`
+	TeamID       string `plist:"com.apple.developer.team-identifier"`
+	GetTaskAllow bool   `plist:"get-task-allow"`
 }
 
 // Resolver is the base interface for the signature result

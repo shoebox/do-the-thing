@@ -18,6 +18,18 @@ func TestOptionalPlistSuite(t *testing.T) {
 	suite.Run(t, new(exportOptionsPlistSuite))
 }
 
+func (s *exportOptionsPlistSuite) TestResolveMethodForProvisioning() {
+	pp := api.ProvisioningProfile{
+		ProvisionedDevices: &[]string{"foo", "bar"},
+		Entitlements: api.Entitlements{
+			GetTaskAllow: true,
+		},
+	}
+	s.subject = &exportOptionsService{}
+
+	s.Equal("app-store", s.subject.resolveMethodForProvisioning(&pp))
+}
+
 /*
 func (s *exportOptionsPlistSuite) BeforeTest(suiteName, testName string) {
 	s.API = &api.API{

@@ -22,7 +22,7 @@ func (frm formatter) Parse(r io.Reader, errType bool) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		txt := scanner.Text()
-		log.Debug().Msg(txt)
+		// log.Debug().Msg(txt)
 		var found bool
 		for _, matcher := range frm.m {
 			match, m := matcher.Match(strings.ReplaceAll(txt, `\ `, ""))
@@ -39,7 +39,6 @@ func (frm formatter) Parse(r io.Reader, errType bool) {
 		}
 
 		if !found && errType {
-			// fmt.Println("txt :::", txt)
 			log.Error().Msg(txt)
 		}
 	}

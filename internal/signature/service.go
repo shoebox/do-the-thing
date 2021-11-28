@@ -156,6 +156,7 @@ func (a signatureService) configureBuildSettingsOfBuildConfiguration(
 		Str("UUD", UUID).
 		Str("Identity", identity).
 		Msg("Configuring build settingd")
+
 	return a.configureBuildSetting(
 		ctx,
 		bc,

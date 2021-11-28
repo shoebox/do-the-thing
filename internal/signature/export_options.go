@@ -135,7 +135,7 @@ func (s exportOptionsService) resolveProvisionings() map[string]string {
 //  # if ProvisionedDevices: nil & ProvisionsAllDevices: nil -> app-store
 func (s exportOptionsService) resolveMethodForProvisioning(p *api.ProvisioningProfile) string {
 	if p.ProvisionedDevices != nil {
-		if p.Entitlements.GetAskAllow {
+		if p.Entitlements.GetTaskAllow {
 			return "development"
 		} else {
 			return "ad-hoc"
