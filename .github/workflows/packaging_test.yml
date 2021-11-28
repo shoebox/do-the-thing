@@ -29,7 +29,7 @@ jobs:
           --xcodeVersion ">=12.4.0 <13.0.0" \
           --buildScheme "Demo" \
           --buildConfiguration "Release" \
-          --target "Demo" \  
+          --target "Demo" \
           --signatureFilesPath ./test-project/dummy-signature \
           --certificatePassword toto build
 
@@ -40,7 +40,7 @@ jobs:
           --xcodeVersion ">=12.4.0 <13.0.0" \
           --buildScheme "Demo" \
           --buildConfiguration "Release" \
-          --target "Demo" \ 
+          --target "Demo" \
           --signatureFilesPath ./test-project/dummy-signature \
           --certificatePassword toto archive
 
