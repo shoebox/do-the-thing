@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AppIDName</key>
+	<string>selfsigned: any app</string>
+	<key>ApplicationIdentifierPrefix</key>
+	<array>
+	<string>SELFSIGNED</string>
+	</array>
+	<key>CreationDate</key>
+	<date>2021-11-05T16:06:54Z</date>
+	<key>Platform</key>
+	<array>
+		<string>iOS</string>
+	</array>
+	<key>DeveloperCertificates</key>
+    <array>
+        <data>MIIDRzCCAi+gAwIBAgIBATANBgkqhkiG9w0BAQsFADBJMSUwIwYDVQQDDBxpT1MgRGV2ZWxvcG1lbnQ6IFNlbGYgU2lnbmVyMRMwEQYDVQQLDApTRUxGU0lHTkVEMQswCQYDVQQGEwJHQjAeFw0yMTExMDUxNjA2NTRaFw0zMTExMDUxNjA2NTRaMEkxJTAjBgNVBAMMHGlPUyBEZXZlbG9wbWVudDogU2VsZiBTaWduZXIxEzARBgNVBAsMClNFTEZTSUdORUQxCzAJBgNVBAYTAkdCMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxsZG6b2JH2W55FyKLepONOFMFU5mXexcEdlsAwJCvIpSPXXGexL44LqBsZIKVvamAyryznf3RBwfVoANBCO5ht5St35c1bzMhDE+h8dOGlNM03f1BXzMVMtXbCQO8BXJTrO6l2VQC2Yi1FSVuYGCsDVP2F9DTGSegwG3fVDvZvm0yWVvf0csT3OWzCjT9FK4aztdFm/xdd8eicQkG4MOpIO8B2g39ml8vkVJRYuUi0gcB2TuRT8XmHQuAgjrcIrgbyKF8hdw0aoGsrevlEwTqSfXLLv7NXMJJ5cOAZCz333O9B+GnCTgaUmUnu7F2Ea46GGcdRDPXRTwxQQVrjnU8wIDAQABozowODAOBgNVHQ8BAf8EBAMCB4AwJgYDVR0lAQH/BBwwGgYIKwYBBQUHAwQGCCsGAQUFBwMDBgRVHSUAMA0GCSqGSIb3DQEBCwUAA4IBAQAsIHdXDTDCPpwbJGs62F8xxGXqRssMhnOK+ZHc1fmVM7PE9GaQZluAuuMZCxSzl2duHO3shrJ0fUgr95lL/I4hRKNv+bLw+vXsX2dEIIXD9i7FCstjVJ+/7YKvtqYmY9DmUaQBdhtRYDht0E32cat8BLfdRQjQMGFJ/2H2f6lLJCWEwrH54dOn5HXLohJG9rwlVfhRDKBfPfyYmbGFU5pLAsC2tSz6KerI5flWUas3BGLe0aTXw9dTTCF+sXi8UtdU1yvC+9o9vMpa9PN2neAf7+qs35xaqW3D18pMmB+NV+P8LyMHkUPKgxOpnSPkpmkjp7EK2VesDcpF9XoQDSe2</data>
+    </array>
+	<key>IsXcodeManaged</key>
+	<false/>
+	<key>Entitlements</key>
+	<dict>
+		<key>aps-environment</key>
+		<string>production</string>
+
+	    <key>com.apple.developer.networking.wifi-info</key>
+		<true/>
+
+		<key>com.apple.developer.associated-domains</key>
+		<string>*</string>
+
+		<key>application-identifier</key>
+		<string>SELFSIGNED.shoebox.test.demo</string>
+
+		<key>keychain-access-groups</key>
+		<array>
+			<string>SELFSIGNED.*</string>
+		</array>
+
+		<key>get-task-allow</key>
+		<false/>
+
+		<key>com.apple.developer.team-identifier</key>
+		<string>SELFSIGNED</string>
+	</dict>
+	<key>ExpirationDate</key>
+	<date>2031-11-05T16:06:54Z</date>
+	<key>Name</key>
+	<string>DO NOT USE: only for dummy signing</string>
+	<key>ProvisionsAllDevices</key>
+	<true/>
+	<key>TeamIdentifier</key>
+	<array>
+		<string>SELFSIGNED</string>
+	</array>
+	<key>TeamName</key>
+	<string>Selfsigners united</string>
+	<key>TimeToLive</key>
+	<integer>3652</integer>
+	<key>UUID</key>
+	<string>B5C2906D-D6EE-476E-AF17-D99AE14644AA</string>
+	<key>Version</key>
+	<integer>1</integer>
+</dict>
+</plist>
