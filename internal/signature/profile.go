@@ -81,10 +81,13 @@ func (p provisioningService) Install(pp *api.ProvisioningProfile) error {
 		return err
 	}
 
+	folder := fmt.Sprintf("%v/Library/MobileDevice/Provisioning Profiles/", dir)
+	if err := os.MkdirAll(folder, os.ModePerm); err != nil {
+		return err
+	}
+
 	// Formatting the provisioning path
-	fn := fmt.Sprintf("%v/Library/MobileDevice/Provisioning Profiles/%v.mobileprovision",
-		dir,
-		pp.UUID)
+	fn := fmt.Sprintf("%v/%v.mobileprovision", folder, pp.UUID)
 
 	// Writing the file
 	return ioutil.WriteFile(fn, input, os.ModePerm)
